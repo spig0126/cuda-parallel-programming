@@ -51,17 +51,11 @@ void generate_sig(double* sample_points, double* sig){
     }
 }
 
-void plot_graph(int window_num, double* x_values, double* y_values, char* title, char* xlabel, char* ylabel){
-    FILE *dataf = fopen("/Users/alicejung/Projects/cuda/FFT/data.txt", "w");
-    FILE *gnupipe = popen("gnuplot -persistent", "w");
-    for (int i = 0; i<N; i++){
-        fprintf(dataf, "%lf %lf\n", x_values[i], y_values[i]);
+void save_data(double* x_values, double* y_values, const char* path){
+    FILE *dataf = fopen(path, "w");
+    for (int i=0; i<N; i++){
+    fprintf(dataf, "%lf %lf\n", x_values[i], y_values[i]);
     }
-    fprintf(gnupipe, "set terminal qt %d\nset title '%s'\nset xlabel '%s'\nset ylabel '%s'\n",window_num,title, xlabel, ylabel);
-    // fprintf(gnupipe, "set xrange [0:%d]\nset yrange [0:%d]\n", N, N);
-    fprintf(gnupipe, "plot '%s'\n", "data.txt");
-    pclose(gnupipe);
-    fclose(dataf);
 }
 
 void cal_dft(double* sample_points, double* sig, mkClockMeasure* ck){
@@ -77,7 +71,7 @@ void cal_dft(double* sample_points, double* sig, mkClockMeasure* ck){
             xr[k] += sig[n] * cos(bn);
         }
         x[k] = 2 * sqrt(pow(xr[k], 2) + pow(xi[k], 2)) / N;
-        printf("frequency: %f\tamplitude: %f\n", x[k], freq[k]);
+        // printf("frequency: %f\tamplitude: %f\n", x[k], freq[k]);
     }
     ck->clockPause();
     printf("-------------------[CPU] DFT ---------------------\n");
@@ -110,10 +104,11 @@ int main(void){
 
     create_sample_points(sample_points);
     generate_sig(sample_points, sig);
-    cal_dft(sample_points, sig, ckCpu_dft);
-    cal_idft(ckCpu_idft);
-    // plot_graph(0, sample_points, sig, "original sig", "time", "amplitude");
-    // plot_graph(1, sample_points, idft_sig, "idft sig", "time", "amplitude");
+    save_data(sample_points, sig,  "original_signal.txt");
 
-    // plot_graph(0, freq, x, "DFT", "frequency", "amplitude");
+    cal_dft(sample_points, sig, ckCpu_dft);
+    save_data(freq, x, "dft_frequencies.txt");
+
+    cal_idft(ckCpu_idft);
+    save_data(sample_points, idft_sig, "idft_signal.txt");
 }
