@@ -4,6 +4,7 @@
  *       Filename:  main.cu
  *
  *    Description: 	Sparse Matrix Multiplication
+ *					: Y = Y + A * X (Y: nx1 matrix, A: nxm matrix, X: mx1 matrix)
  *
  *        Version:  1.0
  *        Created:  2022/04/01
@@ -15,6 +16,8 @@
  *
  * =====================================================================================
  */
+
+ 
 
 #include <assert.h>
 #include "sparseMatrix.h"
@@ -28,12 +31,8 @@ const unsigned int SIZE = 256;
 unsigned int X[SIZE];
 unsigned int Y[SIZE];
 
-unsigned int cpuOut_basic[SIZE];
-unsigned int cpuOut_CSR[SIZE];
-unsigned int gpuOut_basic[SIZE];
-unsigned int gpuOut_CSR[SIZE];
-unsigned int gpuOut_ELL[SIZE];
-unsigned int gpuOut_COO[SIZE];
+unsigned int cpuOut_basic[SIZE], cpuOut_CSR[SIZE];
+unsigned int gpuOut_basic[SIZE], gpuOut_CSR[SIZE], gpuOut_ELL[SIZE], gpuOut_COO[SIZE];
 
 int a_byteSize = SIZE * SIZE * sizeof(unsigned int);
 int vector_byteSize = SIZE * sizeof(unsigned int);
@@ -154,7 +153,7 @@ int convertToCooFormat(unsigned int *m, unsigned int *data, unsigned int *col_in
 	return index;
 }
 
-void convertToEllFormat(unsigned int m_data[SIZE][4], unsigned int m_col_index[SIZE][4], unsigned int *data, unsigned int *col_index, const int num_row, const int num_col){
+void convertToEllFormat(unsigned int m_data[SIZE][ELL_SIZE], unsigned int m_col_index[SIZE][ELL_SIZE], unsigned int *data, unsigned int *col_index, const int num_row, const int num_col){
 	for(int row=0; row<num_row; row++){
 		for(int col=0; col<num_col; col++){
 			data[col * num_row + row] = m_data[row][col];
@@ -163,7 +162,7 @@ void convertToEllFormat(unsigned int m_data[SIZE][4], unsigned int m_col_index[S
 	}
 }
 
-void hybridSparseMatrixMult(unsigned int *x, unsigned int *y, unsigned int padding[SIZE][4], unsigned int padding_col_index[SIZE][4], unsigned int transposed[4][SIZE], unsigned int *d_y_out_COO ,int coo_num_col, int ell_num_col, int row_size, int col_size){
+void hybridSparseMatrixMult(unsigned int *x, unsigned int *y, unsigned int padding[SIZE][ELL_SIZE], unsigned int padding_col_index[SIZE][ELL_SIZE], unsigned int transposed[ELL_SIZE][SIZE], unsigned int *d_y_out_COO ,int coo_num_col, int ell_num_col, int row_size, int col_size){
 	//row의 non zero element 최고 개수 구하기
 	int max = 0, cnt=0;
 	for(int row=0; row<SIZE; row++){
@@ -287,6 +286,10 @@ int main(){
 	checkCudaError(err);
 	err = cudaMemcpy(d_transposed_col_index, transposed_col_index, ELL_byteSize, cudaMemcpyHostToDevice);
 	checkCudaError(err);
+	err = cudaMemcpy(d_padding, padding, ELL_byteSize, cudaMemcpyHostToDevice);
+	checkCudaError(err);
+	err = cudaMemcpy(d_padding_col_index, padding_col_index, ELL_byteSize, cudaMemcpyHostToDevice);
+	checkCudaError(err);
 
 
 	//MK: Time Measurement
@@ -329,9 +332,9 @@ int main(){
 
 		checkCudaError(err);
 
-		// ckHybrid->clockResume();
-		// hybridSparseMatrixMult(X, Y, padding, padding_col_index, transposed, d_y_out_COO ,1, 3, SIZE, 4);
-		// ckHybrid->clockPause();
+		ckHybrid->clockResume();
+		hybridSparseMatrixMult(X, Y, padding, padding_col_index, transposed, d_y_out_COO ,1, 3, SIZE, 4);
+		ckHybrid->clockPause();
 
 	}
 
