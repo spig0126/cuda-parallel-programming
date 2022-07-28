@@ -1,9 +1,9 @@
 /*
  * =====================================================================================
  *
- *       Filename:  DFT.cpp
+ *       Filename:  DFT.cu
  *
- *    Description:  Ch03 Samples
+ *    Description:  DFT
  *
  *        Version:  1.0
  *        Created:  07/20/2022 
@@ -21,7 +21,7 @@
 #include <complex.h>
 #include "mkClockMeasure.h"
 
-const int SAMPLING_RATE = 100;
+const int SAMPLING_RATE = 64;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
 
@@ -58,7 +58,7 @@ void save_data(double* x_values, double* y_values, const char* path){
     }
 }
 
-void cal_dft(double* sample_points, double* sig, mkClockMeasure* ck){
+void cpu_cal_dft(double* sample_points, double* sig, mkClockMeasure* ck){
     ck->clockResume();
 
     for (int k = 0; k<N; k++){
@@ -96,7 +96,12 @@ void cal_idft(mkClockMeasure *ck){
     ck->clockPrint();
 }
 
+
+
+
 int main(void){
+    // int sampling_rates = [64, 256, 1024, 4096]
+    printf("SAMPLING_RATE : %d\n", SAMPLING_RATE);
     mkClockMeasure *ckCpu_dft = new mkClockMeasure("CPU - DFT CODE");
     ckCpu_dft->clockReset();
     mkClockMeasure *ckCpu_idft = new mkClockMeasure("CPU - IDFT CODE");
@@ -104,11 +109,10 @@ int main(void){
 
     create_sample_points(sample_points);
     generate_sig(sample_points, sig);
-    save_data(sample_points, sig,  "original_signal.txt");
+    cpu_cal_dft(sample_points, sig, ckCpu_dft);
+    // cal_idft(ckCpu_idft);
 
-    cal_dft(sample_points, sig, ckCpu_dft);
-    save_data(freq, x, "dft_frequencies.txt");
-
-    cal_idft(ckCpu_idft);
-    save_data(sample_points, idft_sig, "idft_signal.txt");
+    // save_data(sample_points, sig,  "original_signal.txt");
+    // save_data(freq, x, "dft_frequencies.txt");
+    // save_data(sample_points, idft_sig, "idft_signal.txt");
 }
