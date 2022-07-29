@@ -38,14 +38,13 @@ int a_byteSize = SIZE * SIZE * sizeof(unsigned int);
 int vector_byteSize = SIZE * sizeof(unsigned int);
 int ELL_byteSize = SIZE * 4 * sizeof(unsigned int);
 
-//Thread Num
+//Thread Num : one thread calculates one element of y_out
 const int tbSize = SIZE;
-const int threads = 32;
+const int threads = 64;
 dim3 gridSize(ceil((float)tbSize / (float)threads),1, 1);
 dim3 blockSize(threads, 1, 1);
 
-void generateRandomVector(unsigned int *v, const int size)
-{
+void generateRandomVector(unsigned int *v, const int size){
 	for (int i = 0; i < size; i++)
 	{
 		v[i] = (unsigned int)float(rand()) / float(RAND_MAX) * MAX_NUM;
@@ -75,7 +74,7 @@ bool compareMatrix(const unsigned int *inputA, const unsigned int *inputB, const
 void cpuSparseMatrixMult_basic(unsigned int a[SIZE][SIZE], unsigned int *x, unsigned int *y, unsigned int *y_out, const int rowSize, const int colSize)
 {
 	for(int row=0; row < rowSize; row ++){
-		int dot = 0;
+		unsigned int dot = 0;
 
 		for(int col=0; col <colSize; col++){
 			dot += a[row][col] * x[col];
@@ -127,7 +126,7 @@ __global__ void gpuSparseMatrixMult_ELL(unsigned int *x, unsigned int *y, unsign
 	int row = blockIdx.x * blockDim.x + threadIdx.x;
 
 	if(row < row_size){
-		int dot = 0;
+		unsigned int dot = 0;
 
 		for(int col = 0; col<col_size; col++){
 			dot += transposed[col*row_size + row] * x[transposed_col_index[col*row_size + row]];
@@ -326,15 +325,15 @@ int main(){
 		ckGpu_CSR->clockPause();
 
 		ckGpu_ELL->clockResume();
-		gpuSparseMatrixMult_ELL<<<gridSize, blockSize>>>(d_x, d_y, d_y_out_ELL, d_transposed, d_transposed_col_index, SIZE, 4);
+		gpuSparseMatrixMult_ELL<<<gridSize, blockSize>>>(d_x, d_y, d_y_out_ELL, d_transposed, d_transposed_col_index, SIZE, ELL_SIZE);
 		err=cudaDeviceSynchronize();
 		ckGpu_ELL->clockPause();
 
 		checkCudaError(err);
 
-		ckHybrid->clockResume();
-		hybridSparseMatrixMult(X, Y, padding, padding_col_index, transposed, d_y_out_COO ,1, 3, SIZE, 4);
-		ckHybrid->clockPause();
+		// ckHybrid->clockResume();
+		// hybridSparseMatrixMult(X, Y, padding, padding_col_index, transposed, d_y_out_COO ,1, 3, SIZE, 4);
+		// ckHybrid->clockPause();
 
 	}
 
@@ -378,8 +377,7 @@ int main(){
 		ckGpu_ELL->clockPrint();
 	}else{
 		printf("ERROR: Two Matrices are not same\n");
+		printVector(cpuOut_basic, SIZE, "cpu basic");
+		printVector(gpuOut_ELL, SIZE, "gpu ELL");
 	}
-
-	// printVector(cpuOut_basic, SIZE, "CPU basic");
-	// printVector(gpuOut_CSR, SIZE, "GPU basic");
 }
