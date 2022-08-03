@@ -1,7 +1,7 @@
 CC=nvcc 
 
-a.out:  mkClockMeasure.h  mkCuda.h DFT.cu
-	$(CC) -o dft.out DFT.cu
+a.out:  mkClockMeasure.h  mkCuda.h FFT.cu
+	$(CC) -o fft.out FFT.cu
 
 clean:
-	rm -rf a.out
+	rm -rf fft.out

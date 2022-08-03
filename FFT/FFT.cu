@@ -18,16 +18,12 @@
 
 #include <stdio.h>
 #include <math.h>
-#include <complex.h>
+#include "comp.h"
 #include "mkClockMeasure.h"
 
 const int SAMPLING_RATE = 32768;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
-
-typedef struct Comp{
-    double r, i;
-} Comp;
 
 double freq_amp_ph[FREQ_NUM][3] = {{1, 3, 0}, {4, 1, 0}, {7, 0.5, 0}};
 double freq[N];
@@ -37,33 +33,7 @@ double sig[N];
 Comp fft_res[N];
 
 //Comp operation functions
-Comp cal_euler(double x){
-    Comp res;
-    res.r = cos(x);
-    res.i = sin(x);
-    return res;
-}
 
-Comp comp_mult(Comp a, Comp b){
-    Comp res;
-    res.r = a.r * b.r - a.i * b.i;
-    res.i = a.r * b.i + a.i * b.r;
-    return res;
-}
-
-Comp comp_add(Comp a, Comp b){
-    Comp res;   
-    res.r = a.r + b.r;
-    res.i = a.i + b.i;
-    return res;
-}
-
-Comp comp_sub(Comp a, Comp b){
-    Comp res;   
-    res.r = a.r - b.r;
-    res.i = a.i - b.i;
-    return res;
-}
 
 //data settings
 void create_sample_points(double* sample_points){
@@ -90,8 +60,8 @@ void save_data(double* x_values, double* y_values, const char* path){
     }
 }
 
-//algorithms
-void fft(int len, Comp* x){ //x = signal 값
+//radix-2 cooley-tukey fft
+void fft_recursive(int len, Comp* x){ //x = signal 값
     if(len == 1){
         return;
     }
@@ -106,8 +76,8 @@ void fft(int len, Comp* x){ //x = signal 값
     }
 
     //divde
-    fft(half_len, even);
-    fft(half_len, odd);
+    fft_recursive(half_len, even);
+    fft_recursive(half_len, odd);
 
     //conquer
     for(int k=0; k<half_len; k++){
@@ -115,6 +85,23 @@ void fft(int len, Comp* x){ //x = signal 값
         Comp t = comp_mult(w_k, odd[k]);
         x[k] = comp_add(even[k], t);
         x[k + half_len] = comp_sub(even[k], t);
+    }
+}
+
+void fft_iterative(int len, Comp* x){
+    int depth = (int)log2(len);
+    int half_len == len >> 1;
+
+    for(int l == len; l > 0; l/=2){
+        int itvl = l >> 1;
+
+        for(int k=0; k<half_len; k++){
+            Comp w_k = cal_euler(-2 * M_PI * k / l);
+            Comp odd = comp_mult(w_k, x[k + itvl]);
+            Comp even = x[k];
+            x[k] = comp_add(even, odd);
+            x[k + half_len] = comp_sub(even, odd);
+        }
     }
 }
 
@@ -129,7 +116,7 @@ void cal_fft(double* sample_points, double* sig, mkClockMeasure* ck){
     ck -> clockResume();
 
     //calculate fft
-    fft(N, fft_res);
+    fft_recursive(N, fft_res);
 
     //cal magnitude of each frequency
     for(int k=0; k<N; k++){
@@ -152,8 +139,16 @@ int main(void){
 
     create_sample_points(sample_points);
     generate_sig(sample_points, sig);
-    cal_fft(sample_points, sig, ckCpu_dft);
+    // cal_fft(sample_points, sig, ckCpu_dft);
 
-    save_data(sample_points, sig,  "original_signal.txt");
-    save_data(freq, fft_amp, "fft_frequencies.txt");
+    /* fft iterative version */
+    //initialize fft as signal values
+    for(int i=0; i<N; i++){
+        fft_res[i].r = sig[i];
+        fft_res[i].i = 0;
+    }
+    fft_iterative(N, fft_res);
+
+    save_data(sample_points, sig,  "data/original_signal.txt");
+    // save_data(freq, fft_amp, "fft_frequencies.txt");
 }
