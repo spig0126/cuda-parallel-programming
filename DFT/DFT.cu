@@ -26,13 +26,15 @@
 const int SAMPLING_RATE = 4096;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
-const int MAX_ITER = 1;
+const int MAX_ITER = 10;
 
 
 double freq_amp_ph[FREQ_NUM][3] = {{1, 3, 0}, {4, 1, 0}, {7, 0.5, 0}};
 double sample_points[N], freq[N], sig[N];
 double idft_sig[N], xr[N], xi[N], x[N];
 double gpu_idft_sig[N], gpu_xr[N], gpu_xi[N], gpu_x[N];
+
+__constant__ double d_sig[N];
 
 void create_sample_points(double* sample_points){
     for (int i = 0; i<N; i++){
@@ -78,15 +80,17 @@ void save_data(double* x_values, double* y_values, const char* path){
     }
 }
 
-void cpu_dft(double* sample_points, double* sig, mkClockMeasure* ck){
+void cpu_dft(mkClockMeasure* ck){
     ck->clockResume();
+
+    double exp = 2 * M_PI / N;
 
     for (int k = 0; k<N; k++){
         xi[k] = 0;
         xr[k] = 0;
         for (int n = 0; n < N; n++)
         {
-            double bn = 2 * M_PI * k * n / N;
+            double bn = exp * k * n;
             xi[k] -= sig[n] * sin(bn);
             xr[k] += sig[n] * cos(bn);
         }
@@ -98,7 +102,7 @@ void cpu_dft(double* sample_points, double* sig, mkClockMeasure* ck){
     ck->clockPause();
 }
 
-__global__ void gpu_dft(double* d_sig, double* d_xi, double* d_xr, double* d_x, int N){
+__global__ void gpu_dft(double* d_xi, double* d_xr, double* d_x, int N){
     //1 freq = 1 thread
     int k = blockIdx.x * blockDim.x + threadIdx.x;
     double xi=0, xr=0;
@@ -156,7 +160,7 @@ __global__ void gpu_idft(double* d_idft_sig, double* d_xi, double* d_xr, int N){
 
 int main(void){
     // int sampling_rates = [64, 256, 1024, 4096]
-    printf("SAMPLING_RATE : %d\n\n\n", SAMPLING_RATE);
+    printf("SAMPLING_RATE : %d\nMAX_ITERATION : %d\n\n", SAMPLING_RATE, MAX_ITER);
 
     /* set basic data */
     create_sample_points(sample_points);
@@ -167,12 +171,10 @@ int main(void){
     ckCpu_dft->clockReset(), ckCpu_idft->clockReset(), ckGpu_dft->clockReset(), ckGpu_idft->clockReset();
 
     /* memory: host -> device */ 
-    double *d_sig, *d_idft_sig, *d_xi, *d_xr, *d_x;
+    double *d_idft_sig, *d_xi, *d_xr, *d_x;
     int bytesize = N * sizeof(double);
 
-    cudaError_t err = cudaMalloc((void**)&d_sig, bytesize);
-    checkCudaError(err);
-    err = cudaMalloc((void**)&d_idft_sig, bytesize);
+    cudaError_t err = cudaMalloc((void**)&d_idft_sig, bytesize);
     checkCudaError(err);
     err = cudaMalloc((void**)&d_xi, bytesize);
     checkCudaError(err);
@@ -183,7 +185,7 @@ int main(void){
     err = cudaMalloc((void**)&d_idft_sig, bytesize);
     checkCudaError(err);
 
-    err = cudaMemcpy(d_sig, sig, bytesize, cudaMemcpyHostToDevice);
+    err = cudaMemcpyToSymbol(d_sig, sig, bytesize); //constant memory
     checkCudaError(err);
 
     /* set thread, grid size */ 
@@ -195,10 +197,10 @@ int main(void){
 
     for(int i=0; i<MAX_ITER; i++){
         /* DFT */
-        cpu_dft(sample_points, sig, ckCpu_dft);
+        cpu_dft(ckCpu_dft);
 
         ckGpu_dft->clockResume();
-        gpu_dft<<<gridSize, blockSize>>>(d_sig, d_xi, d_xr, d_x, N); 
+        gpu_dft<<<gridSize, blockSize>>>(d_xi, d_xr, d_x, N); 
         ckGpu_dft->clockPause();
 
         err = cudaMemcpy(d_xi, xi, bytesize, cudaMemcpyHostToDevice);
