@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <complex.h>
+#include "comp.h"
 #include "mkClockMeasure.h"
 #include "mkCuda.h"
 
@@ -26,7 +27,7 @@
 const int SAMPLING_RATE = 4096;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
-const int MAX_ITER = 10;
+const int MAX_ITER = 1;
 
 
 double freq_amp_ph[FREQ_NUM][3] = {{1, 3, 0}, {4, 1, 0}, {7, 0.5, 0}};
@@ -56,7 +57,7 @@ void generate_sig(double* sample_points, double* sig){
 }
 
 bool compareResult(double* a, double* b, int size){
-    double epsilon = 0.0000001f;
+    double epsilon = 0.000001f;
 
     for(int i=0; i<size; i++){
         if(fabs(a[i] - b[i]) < epsilon){
@@ -64,7 +65,7 @@ bool compareResult(double* a, double* b, int size){
             return true;
         }
     }
-    return true;
+    return false;
 }
 
 void printData(double* x, double* y, int size, const char* x_label, const char* y_label){
@@ -170,7 +171,7 @@ int main(void){
     mkClockMeasure *ckCpu_dft = new mkClockMeasure("CPU - DFT"),  *ckCpu_idft = new mkClockMeasure("CPU - IDFT"), *ckGpu_dft = new mkClockMeasure("GPU - DFT"), *ckGpu_idft = new mkClockMeasure("GPU - IDFT");
     ckCpu_dft->clockReset(), ckCpu_idft->clockReset(), ckGpu_dft->clockReset(), ckGpu_idft->clockReset();
 
-    /* memory: host -> device */ 
+    /* allocate device memory */ 
     double *d_idft_sig, *d_xi, *d_xr, *d_x;
     int bytesize = N * sizeof(double);
 
@@ -185,35 +186,49 @@ int main(void){
     err = cudaMalloc((void**)&d_idft_sig, bytesize);
     checkCudaError(err);
 
-    err = cudaMemcpyToSymbol(d_sig, sig, bytesize); //constant memory
-    checkCudaError(err);
-
     /* set thread, grid size */ 
     int thread = 256;
     int tbSize = N/thread;
     dim3 gridSize(tbSize, 1, 1);
     dim3 blockSize(thread, 1, 1);
-    // printf("tbsize: %d\n", tbSize);
+
 
     for(int i=0; i<MAX_ITER; i++){
-        /* DFT */
+        /* CPU - DFT */
         cpu_dft(ckCpu_dft);
 
+        /* GPU - DFT */
         ckGpu_dft->clockResume();
+
+        // memory transfer: host -> device
+        err = cudaMemcpyToSymbol(d_sig, sig, bytesize); //constant memory
+        checkCudaError(err);
+
         gpu_dft<<<gridSize, blockSize>>>(d_xi, d_xr, d_x, N); 
+
+        // memory transfer: device -> host 
+        err = cudaMemcpy(gpu_xi, d_xi, bytesize, cudaMemcpyDeviceToHost);
+        checkCudaError(err);
+        err = cudaMemcpy(gpu_xr, d_xr, bytesize, cudaMemcpyDeviceToHost);
+        checkCudaError(err);
+        err = cudaMemcpy(gpu_x, d_x, bytesize, cudaMemcpyDeviceToHost);
+        checkCudaError(err);
+
         ckGpu_dft->clockPause();
 
-        err = cudaMemcpy(d_xi, xi, bytesize, cudaMemcpyHostToDevice);
-        checkCudaError(err);
-        err = cudaMemcpy(d_xr, xr, bytesize, cudaMemcpyHostToDevice);
-        checkCudaError(err);
 
-
-        /* IDFT */
+        /* CPU - IDFT */
         cpu_idft(ckCpu_idft);
 
+        /* GPU - IDFT */
         ckGpu_idft->clockResume();
+
         gpu_idft<<<gridSize, blockSize>>>(d_idft_sig, d_xi, d_xr, N); 
+
+        // memory transfer: device -> host 
+        err = cudaMemcpy(gpu_idft_sig, d_idft_sig, bytesize, cudaMemcpyDeviceToHost);
+	    checkCudaError(err);
+
         ckGpu_idft->clockPause();
     }
 
@@ -238,16 +253,11 @@ int main(void){
     if(compareResult(x, gpu_x, N)){
         printf("-------------------[CPU] DFT ---------------------\n");
 		ckCpu_dft->clockPrint();
-        printf("-------------------[GPU]  DFT ---------------------\n");
+        printf("-------------------[GPU] DFT ---------------------\n");
 		ckGpu_dft->clockPrint();
     }
     else{
         printf("ERROR: DFT results are not the same\n\n");
-        // printf("----------[CPU]-------------\n");
-        // printData(freq, x, N, "frequency", "amplitude");
-        // printf("----------[GPU]-------------\n");
-        // printData(freq, gpu_x, N, "frequency", "amplitude");
-
     }
 
     /* print Inverse DFT performance */
