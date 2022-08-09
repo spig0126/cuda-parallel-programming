@@ -27,13 +27,17 @@
 const int SAMPLING_RATE = 4096;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
-const int MAX_ITER = 1;
+const int MAX_ITER = 100;
 
 
 double freq_amp_ph[FREQ_NUM][3] = {{1, 3, 0}, {4, 1, 0}, {7, 0.5, 0}};
 double sample_points[N], freq[N], sig[N];
-double idft_sig[N], xr[N], xi[N], x[N];
-double gpu_idft_sig[N], gpu_xr[N], gpu_xi[N], gpu_x[N];
+//cpu
+Comp x[N];
+double idft_sig[N], amp[N];
+//gpu
+Comp gpu_x[N];
+double gpu_idft_sig[N], gpu_amp[N];
 
 __constant__ double d_sig[N];
 
@@ -87,15 +91,15 @@ void cpu_dft(mkClockMeasure* ck){
     double exp = 2 * M_PI / N;
 
     for (int k = 0; k<N; k++){
-        xi[k] = 0;
-        xr[k] = 0;
+        x[k].i = 0;
+        x[k].r = 0;
         for (int n = 0; n < N; n++)
         {
             double bn = exp * k * n;
-            xi[k] -= sig[n] * sin(bn);
-            xr[k] += sig[n] * cos(bn);
+            x[k].i -= sig[n] * sin(bn);
+            x[k].r += sig[n] * cos(bn);
         }
-        x[k] = 2 * sqrt(pow(xr[k], 2) + pow(xi[k], 2)) / N;
+        amp[k] = 2 * sqrt(pow(x[k].r, 2) + pow(x[k].i, 2)) / N;
         // printf("frequency: %f\tamplitude: %f\n", freq[k], x[k]);
         // printf("[CPU] k: %d\txi: %lf\t, xr: %lf\n", k, xi[k], xr[k]);
 
@@ -103,7 +107,7 @@ void cpu_dft(mkClockMeasure* ck){
     ck->clockPause();
 }
 
-__global__ void gpu_dft(double* d_xi, double* d_xr, double* d_x, int N){
+__global__ void gpu_dft(Comp* d_x, double* d_amp, int N){
     //1 freq = 1 thread
     int k = blockIdx.x * blockDim.x + threadIdx.x;
     double xi=0, xr=0;
@@ -115,9 +119,9 @@ __global__ void gpu_dft(double* d_xi, double* d_xr, double* d_x, int N){
         xi -= d_sig[n] * sin(bn);
         xr += d_sig[n] * cos(bn);
     }
-    d_xi[k] = xi;
-    d_xr[k] = xr;
-    d_x[k] =  2 * sqrt(pow(xr, 2) + pow(xi, 2)) / N;
+    d_x[k].i = xi;
+    d_x[k].r = xr;
+    d_amp[k] =  2 * sqrt(pow(xr, 2) + pow(xi, 2)) / N;
     // printf("frequency: %d\tamplitude: %lf\t sig: %f\n", k, d_x[k], d_sig[k]);
     // printf("k: %d\n", k);
 
@@ -131,7 +135,7 @@ void cpu_idft(mkClockMeasure *ck){
         for (int k = 0; k < N; k++)
         {
             double bn = 2 * M_PI * k * n / N;
-            idft_sig[n] += xr[k] * cos(bn) + xi[k] * sin(bn);
+            idft_sig[n] += x[k].r * cos(bn) + x[k].i * sin(bn);
         }
         idft_sig[n] /= N;
         // printf("t: %d\tamplitude: %lf\n", n, idft_sig[n]);
@@ -140,7 +144,7 @@ void cpu_idft(mkClockMeasure *ck){
 
 }
 
-__global__ void gpu_idft(double* d_idft_sig, double* d_xi, double* d_xr, int N){
+__global__ void gpu_idft(double* d_idft_sig, Comp* d_x, int N){
     // 1 signal at sample point n = 1 thread
     int n = blockIdx.x * blockDim.x + threadIdx.x;
     double exp = 2 * M_PI * n / N;
@@ -149,7 +153,7 @@ __global__ void gpu_idft(double* d_idft_sig, double* d_xi, double* d_xr, int N){
 
     for(int k=0; k<N; k++){
         double bn = exp * k;
-        sig += d_xr[k] * cos(bn) + d_xi[k] * sin(bn);
+        sig += d_x[k].r * cos(bn) + d_x[k].i * sin(bn);
     }
 
     d_idft_sig[n] = sig / N;
@@ -172,18 +176,16 @@ int main(void){
     ckCpu_dft->clockReset(), ckCpu_idft->clockReset(), ckGpu_dft->clockReset(), ckGpu_idft->clockReset();
 
     /* allocate device memory */ 
-    double *d_idft_sig, *d_xi, *d_xr, *d_x;
-    int bytesize = N * sizeof(double);
+    Comp *d_x;
+    double *d_idft_sig, *d_amp;
+    int db_bytesize = N * sizeof(double);
+    int comp_bytesize = N * 2 * sizeof(double);
 
-    cudaError_t err = cudaMalloc((void**)&d_idft_sig, bytesize);
+    cudaError_t err = cudaMalloc((void**)&d_idft_sig, db_bytesize);
     checkCudaError(err);
-    err = cudaMalloc((void**)&d_xi, bytesize);
+    err = cudaMalloc((void**)&d_x, comp_bytesize);
     checkCudaError(err);
-    err = cudaMalloc((void**)&d_xr, bytesize);
-    checkCudaError(err);
-    err = cudaMalloc((void**)&d_x, bytesize);
-    checkCudaError(err);
-    err = cudaMalloc((void**)&d_idft_sig, bytesize);
+    err = cudaMalloc((void**)&d_amp, db_bytesize);
     checkCudaError(err);
 
     /* set thread, grid size */ 
@@ -201,17 +203,15 @@ int main(void){
         ckGpu_dft->clockResume();
 
         // memory transfer: host -> device
-        err = cudaMemcpyToSymbol(d_sig, sig, bytesize); //constant memory
+        err = cudaMemcpyToSymbol(d_sig, sig, db_bytesize); //constant memory
         checkCudaError(err);
 
-        gpu_dft<<<gridSize, blockSize>>>(d_xi, d_xr, d_x, N); 
+        gpu_dft<<<gridSize, blockSize>>>(d_x, d_amp, N); 
 
         // memory transfer: device -> host 
-        err = cudaMemcpy(gpu_xi, d_xi, bytesize, cudaMemcpyDeviceToHost);
+        err = cudaMemcpy(gpu_x, d_x, comp_bytesize, cudaMemcpyDeviceToHost);
         checkCudaError(err);
-        err = cudaMemcpy(gpu_xr, d_xr, bytesize, cudaMemcpyDeviceToHost);
-        checkCudaError(err);
-        err = cudaMemcpy(gpu_x, d_x, bytesize, cudaMemcpyDeviceToHost);
+        err = cudaMemcpy(gpu_amp, d_amp, db_bytesize, cudaMemcpyDeviceToHost);
         checkCudaError(err);
 
         ckGpu_dft->clockPause();
@@ -223,34 +223,23 @@ int main(void){
         /* GPU - IDFT */
         ckGpu_idft->clockResume();
 
-        gpu_idft<<<gridSize, blockSize>>>(d_idft_sig, d_xi, d_xr, N); 
+        gpu_idft<<<gridSize, blockSize>>>(d_idft_sig, d_x, N); 
 
         // memory transfer: device -> host 
-        err = cudaMemcpy(gpu_idft_sig, d_idft_sig, bytesize, cudaMemcpyDeviceToHost);
+        err = cudaMemcpy(gpu_idft_sig, d_idft_sig, db_bytesize, cudaMemcpyDeviceToHost);
 	    checkCudaError(err);
 
         ckGpu_idft->clockPause();
     }
 
 
-    /* memory: device -> host */
-    err = cudaMemcpy(gpu_xi, d_xi, bytesize, cudaMemcpyDeviceToHost);
-	checkCudaError(err);
-    err = cudaMemcpy(gpu_xr, d_xr, bytesize, cudaMemcpyDeviceToHost);
-	checkCudaError(err);
-    err = cudaMemcpy(gpu_x, d_x, bytesize, cudaMemcpyDeviceToHost);
-	checkCudaError(err);
-    err = cudaMemcpy(gpu_idft_sig, d_idft_sig, bytesize, cudaMemcpyDeviceToHost);
-	checkCudaError(err);
-
-    cudaFree(d_sig);
+    /* free device memory */
     cudaFree(d_idft_sig);
-    cudaFree(d_xi);
-    cudaFree(d_sig);
     cudaFree(d_x);
+    cudaFree(d_amp);
 
     /* print DFT performance */
-    if(compareResult(x, gpu_x, N)){
+    if(compareResult(amp, gpu_amp, N)){
         printf("-------------------[CPU] DFT ---------------------\n");
 		ckCpu_dft->clockPrint();
         printf("-------------------[GPU] DFT ---------------------\n");
@@ -273,8 +262,8 @@ int main(void){
 
     /* save data */
     save_data(sample_points, sig,  "data/original_signal.txt");
-    save_data(freq, x, "data/cpu_dft_frequencies.txt");
-    save_data(freq, gpu_x, "data/gpu_dft_frequencies.txt");
+    save_data(freq, amp, "data/cpu_dft_frequencies.txt");
+    save_data(freq, gpu_amp, "data/gpu_dft_frequencies.txt");
     save_data(sample_points, idft_sig, "data/idft_signal.txt");
     save_data(sample_points, gpu_idft_sig, "data/gpu_idft_signal.txt");
 }
