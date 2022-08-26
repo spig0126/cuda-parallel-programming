@@ -21,7 +21,7 @@
 #include "comp.h"
 #include "mkClockMeasure.h"
 
-const int SAMPLING_RATE = 256;
+const int SAMPLING_RATE = 16;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
 const int MAX_ITER = 1;
@@ -68,7 +68,7 @@ void save_data(double* x_values, double* y_values, const char* path){
 }
 
 bool compareResult(double* a, double* b, int size){
-    double epsilon = 0.0000001f;
+    double epsilon = 0.000001;
 
     for(int i=0; i<size; i++){
         if(fabs(a[i] - b[i]) < epsilon){
@@ -83,13 +83,10 @@ bool compareResult(double* a, double* b, int size){
 int cnt = 0;
 
 void fft_recursive(int len, Comp* x){ //x = signal 값
-    // printf("#%d\n", ++cnt);
     if(len == 1){
-        // printf("\tlen: 1\n\t\tval: %d\n", int(x[0].r));
         return;
     }
-    // printf("\tlen: %d\n", len);
-
+    // printf("len: %d\n", len);
     int half_len = len >> 1;
 
     //divide x into 2 subgroups: even, odd
@@ -99,33 +96,43 @@ void fft_recursive(int len, Comp* x){ //x = signal 값
         odd[i] = x[2 * i + 1];
     }
 
-    //conquer
+    //divde
     fft_recursive(half_len, even);
     fft_recursive(half_len, odd);
 
-    //combine
+    //conquer
     for(int k=0; k<half_len; k++){
+
         Comp w_k = cal_euler(-2 * M_PI * k / len);
         Comp t = comp_mult(w_k, odd[k]);
+
         x[k] = comp_add(even[k], t);
         x[k + half_len] = comp_sub(even[k], t);
 
-        // printf("\t\t\t\tsig[%d] = even %d * exp( %d * %d * %d)", int(x[k].r), N / len, );
+        if(len == 4){
+            printf("\tlen: %d, k: %d\n", len, k);
 
-        // printf("\t\t fft even : ");
-        // for(int i=0; i<half_len; i++){
-        //     printf("%d   ", int(even[i].r));
-        // }
-        // printf("\n");
-        // printf("\t\tfft odd : ");
-        // for(int i=0; i<half_len; i++){
-        //     printf("%d   ", int(odd[i].r));
-        // }
-        // printf("\n");
-  
-        // printf("\t\t\tlen: %d, k: %d, x[k]: %lf, x[k + half_len]: %lf \n", len, k, x[k].r,  x[k+ half_len].r);
-
+            printf("\tfft even : ");
+            for(int i=0; i<half_len; i++){
+                printf("%d   ", int(even[i].r));
+            }
+            printf("\n");
+            printf("\tfft odd : ");
+            for(int i=0; i<half_len; i++){
+                printf("%d   ", int(odd[i].r));
+            }
+            printf("\n");
     
+            // printf("\t\tbefore => \n");
+            // printf("\t\t\tx[k]: %lf, x[k + half_len]: %lf \n", x[k].r,  x[k+ half_len].r);
+            // printf("\t\t\teven: %lf, odd: %lf \n", even[k].r, odd[k].r);
+
+            printf("\t\tafter => \n");
+            printf("\t\t\tx[k]: %lf, x[k + half_len]: %lf \n", x[k].r,  x[k+ half_len].r);
+            printf("\t\t\teven: %lf, odd: %lf \n", even[k].r, odd[k].r);
+
+        }
+        
     }
 }
 
@@ -153,17 +160,40 @@ void cal_fft_recursive(double* sample_points, double* sig, mkClockMeasure* ck){
 }
 
 void fft_iterative(int len, Comp* x){
+    printf("\n\n--------------iterative-------------\n\n");
     int depth = (int)log2(len);
-    int half_len = len>>1;
+    int half_len = len/2;
+    Comp x_copy[N];
 
-    for(int l=2; l<=len; l*=2){
+    for(int l=2, d=1; l<=len; l*=2, d*=2){
         int itvl = len / l;
-        for(int k=0; k<half_len; k++){
-            for(int i=0; i<itvl; i++){
+        for(int i=0; i<N; i++){
+            x_copy[i].r = x[i].r;
+            x_copy[i].i = x[i].i;
+        }
+        printf("len: %d, itvl: %d\n", l, itvl);
+
+        for(int i=0; i<itvl; i++){
+            for(int k=0; k<d; k++){
                 Comp w_k = cal_euler(-2 * M_PI * k / l);
-                Comp t = comp_mult(w_k, x[i + itvl]);
-                x[k] = comp_add(x[i], t);
-                x[k + itvl] = comp_sub(x[i], t);
+                Comp t = comp_mult(w_k, x_copy[i + k*itvl*2 + itvl]);
+                Comp even = x_copy[i + k*itvl*2];
+                x[i + k*itvl] = comp_add(even, t);
+                x[i + k*itvl + half_len] = comp_sub(even, t);
+
+                if(l == 4){
+                    printf("k: %d \n", k);
+                    // printf("\tbefore => \n");
+                    // printf("\t\tx[k]: %lf, x[k + half_len]: %lf\n",  x[i + k*itvl].r, x[i + k*itvl + half_len].r);
+                    // printf("\t\teven: %lf, odd: %lf \n", x_copy[i + k*itvl*2].r, x_copy[i + k*itvl*2 + itvl].r);
+
+                    printf("\tafter => \n");
+                    printf("\t\tx[k]: %lf, x[k + half_len]: %lf\n",  x[i + k*itvl].r, x[i + k*itvl + half_len].r);
+                    printf("\t\teven: %lf, odd: %lf \n", x_copy[i + k*itvl*2].r, x_copy[i + k*itvl*2 + itvl].r);
+
+                }
+                
+
             }
         }
     }
@@ -203,8 +233,8 @@ int main(void){
     ckCpu_fft_iter->clockReset();
 
     create_sample_points(sample_points);
-    // generate_sig(sample_points, sig);
-    generate_sig_TEST(sig);
+    generate_sig(sample_points, sig);
+    // generate_sig_TEST(sig);
 
     /* fft recursive version */
     cal_fft_recursive(sample_points, sig, ckCpu_fft_recur);
