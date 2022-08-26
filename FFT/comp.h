@@ -32,3 +32,9 @@ Comp comp_sub(Comp a, Comp b){
     res.i = a.i - b.i;
     return res;
 }
+
+Comp comp_cpy(Comp a, Comp b){
+    b.r = a.r;
+    b.i = a.i;
+    return a;
+}
