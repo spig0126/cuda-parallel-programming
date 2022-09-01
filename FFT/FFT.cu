@@ -21,26 +21,30 @@
 #include "comp.cuh"
 #include "mkCuda.h"
 #include "mkClockMeasure.h"
+#include <cufft.h>
+#include <cuComplex.h>
 
-const int SAMPLING_RATE = 4096;
+#define NX 256
+#define BATCH 32
+
+const int SAMPLING_RATE = 131072;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
 const int MAX_ITER = 1;
 
 double freq_amp_ph[FREQ_NUM][3] = {{1, 3, 0}, {4, 1, 0}, {7, 0.5, 0}};
 double sample_points[N], freq[N], sig[N];
-__constant__ double d_sig[N];
 /* cpu */
 double fft_amp_rec[N], fft_amp_iter[N];
-Comp fft_res_rec[N], fft_res_iter[N];
+cuDoubleComplex fft_res_rec[N], fft_res_iter[N];
 /* gpu */
 double gpu_amp[N];
-Comp gpu_res[N];
+cuDoubleComplex gpu_res[N];
 int db_bytesize = N * sizeof(double);
-int comp_bytesize = N * 2 * sizeof(double);
+int comp_bytesize = N * sizeof(cuDoubleComplex);
 
 /* thread, grid size */ 
-int thread = 256;    // block size = half length of signal (시그널의 주기성 때문)
+int thread = 64;    // block size = half length of signal (시그널의 주기성 때문)
 int tbSize = N/thread;
 dim3 half_gridSize(tbSize/2, 1, 1);
 dim3 total_gridSize(tbSize, 1, 1);
@@ -48,10 +52,10 @@ dim3 blockSize(thread, 1, 1);
 
 
 /* basic functions */
-void db_to_comp(double* a, Comp* b, int size){
+void db_to_comp(double* a, cuDoubleComplex* b, int size){
     for(int i=0; i<size; i++){
-        b[i].r = a[i];
-        b[i].i = 0;
+        b[i].x = a[i];
+        b[i].y = 0;
     }
 }
 
@@ -100,14 +104,14 @@ void generate_sig_TEST(double* sig){
 
 
 //radix-2 cooley-tukey fft
-void cpu_fft_recursive(int len, Comp* x){ //x = signal 값
+void cpu_fft_recursive(int len, cuDoubleComplex* x){ //x = signal 값
     if(len == 1){
         return;
     }
     int half_len = len >> 1;
 
     //divide x into 2 subgroups: even, odd
-    Comp even[half_len], odd[half_len];
+    cuDoubleComplex even[half_len], odd[half_len];
     for(int i=0; i<half_len; i++){
         even[i] = x[2 * i];
         odd[i] = x[2 * i + 1];
@@ -120,11 +124,26 @@ void cpu_fft_recursive(int len, Comp* x){ //x = signal 값
     //conquer & combine
     for(int k=0; k<half_len; k++){
 
-        Comp w_k = cal_euler(-2 * M_PI * k / len);
-        Comp t = comp_mult(w_k, odd[k]);
+        cuDoubleComplex w_k = cal_euler(-2 * M_PI * k / len);
+        cuDoubleComplex t = cuCmul(w_k, odd[k]);
 
-        x[k] = comp_add(even[k], t);
-        x[k + half_len] = comp_sub(even[k], t);
+        x[k] = cuCadd(even[k], t);
+        x[k + half_len] = cuCsub(even[k], t);
+        
+        // if(len == 16){
+        //     printf("\tfft even : ");
+        //      for(int i=0; i<half_len; i++){
+        //          printf("%d   ", int(even[i].x));
+        //      }
+        //      printf("\n");
+        //      printf("\tfft odd : ");
+        //      for(int i=0; i<half_len; i++){
+        //          printf("%d   ", int(odd[i].x));
+        //      }
+        //      printf("\n");
+        //     printf("\t\t\tx[k]: %lf, x[k + half_len]: %lf \n", x[k].x,  x[k+ half_len].x);
+        //     printf("\t\t\teven: %lf, odd: %lf \n", even[k].x, odd[k].x);
+        // }
     }
 }
 
@@ -140,23 +159,24 @@ void cpu_cal_fft_recursive(double* sample_points, double* sig, mkClockMeasure* c
 
     //cal magnitude of each frequency
     for(int k=0; k<N; k++){
-        fft_amp_rec[k] = 2 * sqrt(pow(fft_res_rec[k].r, 2) + pow(fft_res_rec[k].i, 2)) / N;
+        fft_amp_rec[k] = 2 * sqrt(pow(cuCreal(fft_res_rec[k]), 2) + pow(cuCimag(fft_res_rec[k]), 2)) / N;
     }
 
     ck->clockPause();
 }
 
-void cpu_fft_iterative(int len, Comp* x){
+void cpu_fft_iterative(int len, cuDoubleComplex* x){
     int depth = (int)log2(len);
     int half_len = len/2;
-    Comp x_copy[N];
+    cuDoubleComplex x_copy[N];
 
     // 1 iteration = 1 layer
     for(int l=2, d=1; l<=len; l<<=1, d<<=1){
         // update data from lower layer
+        // printf("len: %d\n", l);
         for(int i=0; i<N; i++){
-            x_copy[i].r = x[i].r;
-            x_copy[i].i = x[i].i;
+            x_copy[i].x = cuCreal(x[i]);
+            x_copy[i].y = cuCimag(x[i]);
         }
 
         int itvl = len / l;
@@ -169,11 +189,16 @@ void cpu_fft_iterative(int len, Comp* x){
                 int res_i = i + temp;
                 int res_half_i = res_i + half_len;
 
-                Comp w_k = cal_euler(-2 * M_PI * k / l);
-                Comp t = comp_mult(w_k, x_copy[data_odd_i]);
-                Comp even = x_copy[data_even_i];
-                x[res_i] = comp_add(even, t);
-                x[res_half_i] = comp_sub(even, t);
+                cuDoubleComplex w_k = cal_euler(-2 * M_PI * k / l);
+                cuDoubleComplex t = cuCmul(w_k, x_copy[data_odd_i]);
+                cuDoubleComplex even = x_copy[data_even_i];
+                x[res_i] = cuCadd(even, t);
+                x[res_half_i] = cuCsub(even, t);
+
+                // if(l == 2){
+                //      printf("\t\tx[k]: %lf, x[k + half_len]: %lf\n",  cuCreal(x[i + k*itvl]), cuCreal(x[i + k*itvl + half_len]));
+                //      printf("\t\teven: %lf, odd: %lf \n", cuCreal(x_copy[i + k*itvl*2]), cuCreal(x_copy[i + k*itvl*2 + itvl]));
+                //  }
             }
         }
     }
@@ -191,30 +216,27 @@ void cpu_cal_fft_iterative(double* sample_points, double* sig, mkClockMeasure* c
 
     //cal magnitude of each frequency
     for(int k=0; k<N; k++){
-        fft_amp_iter[k] = 2 * sqrt(pow(fft_res_iter[k].r, 2) + pow(fft_res_iter[k].i, 2)) / N;
+        fft_amp_iter[k] = 2 * sqrt(pow(cuCreal(fft_res_iter[k]), 2) + pow(cuCimag(fft_res_iter[k]), 2)) / N;
     }
 
     ck->clockPause();
 }
 
-__global__ void gpu_cal_amp(Comp* d_res, double* d_amp, int half_len){
+__global__ void gpu_cal_amp(cuDoubleComplex* d_res, double* d_amp, int half_len){
     int k = blockDim.x * blockIdx.x + threadIdx.x;
 
-    d_amp[k] = 2 * sqrt(pow(d_res[k].r, 2) + pow(d_res[k].i, 2)) / N;
+    d_amp[k] = 2 * sqrt(pow(cuCreal(d_res[k]), 2) + pow(cuCimag(d_res[k]), 2)) / N;
 }
 
-__global__ void gpu_update_data(Comp* d_res, Comp* d_res_copy, int len, int temp){
+__global__ void gpu_update_data(cuDoubleComplex* d_res, cuDoubleComplex* d_res_copy, int len, int temp){
     /* update data from lower layer */
     int i = blockDim.x * blockIdx.x + threadIdx.x;
 
-    // if(temp == 4){
-    //     printf("i: %d => d_res_copy[i].r = %lf,  d_res_copy[i].i = %lf, d_res[i].r = %lf, d_res[i].i = %lf\n", i, d_res_copy[i].r, d_res_copy[i].i, d_res[i].r,  d_res[i].i);
-    // }
-
-    d_res_copy[i].r = d_res[i].r;
-    d_res_copy[i].i = d_res[i].i;
+    d_res_copy[i].x = d_res[i].x;
+    d_res_copy[i].y = d_res[i].y;
 }
-__global__ void gpu_fft(Comp* d_res, Comp* d_res_copy, int len, int half_len, int itvl){
+
+__global__ void gpu_fft(cuDoubleComplex* d_res, cuDoubleComplex* d_res_copy, int len, int half_len, int itvl){
     int i = blockDim.x * blockIdx.x + threadIdx.x;
 
     int k = (int)(i / itvl);
@@ -223,31 +245,28 @@ __global__ void gpu_fft(Comp* d_res, Comp* d_res_copy, int len, int half_len, in
     int res_i = i;
     int res_half_i = i + half_len;
   
-    Comp w_k = cal_euler(-2 * M_PI * k / len);
-    Comp t = comp_mult(w_k, d_res_copy[data_odd_i]);
-    Comp even = d_res_copy[data_even_i];
-    d_res[res_i] = comp_add(even, t);
-    d_res[res_half_i] = comp_sub(even, t);
- 
+    cuDoubleComplex w_k = cal_euler(-2 * M_PI * k / len);
+    cuDoubleComplex t = cuCmul(w_k, d_res_copy[data_odd_i]);
+    cuDoubleComplex even = d_res_copy[data_even_i];
+    d_res[res_i] = cuCadd(even, t);
+    d_res[res_half_i] = cuCsub(even, t);
+
     // if(len == 2){
-    //     // printf("k: %d \n", k);
-    //     // printf("\tbefore => \n");
-    //     // printf("\t\tx[k]: %lf, x[k + half_len]: %lf\n",  x[i + k*itvl].r, x[i + k*itvl + half_len].r);
-    //     // printf("\t\teven: %lf, odd: %lf \n", x_copy[i + k*itvl*2].r, x_copy[i + k*itvl*2 + itvl].r);
-
-    //     printf("\t\ti: %d, k: %d\t=>\tx[k]: %lf, x[k + half_len]: %lf\n",  i, k, d_res[res_i].r, d_res[res_half_i].r);
-    //     printf("\t\ti: %d, k: %d\t=>\teven: %lf, odd: %lf \n", i, k, d_res_copy[data_even_i].r, d_res_copy[data_odd_i].r);
-
+    //     printf("k: %d \n", k);
+    //     printf("\t\ti: %d, k: %d\t=>\tx[k]: %lf, x[k + half_len]: %lf\n",  i, k, d_res[res_i].x, d_res[res_half_i].x);
+    //     printf("\t\ti: %d, k: %d\t=>\teven: %lf, odd: %lf \n", i, k, d_res_copy[data_even_i].x, d_res_copy[data_odd_i].x);
     // }
 }
 
-
 void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_transfer, mkClockMeasure* ck_kernels, mkClockMeasure* ck_total){
     /* initialize fft as signal values */
+    // printf("initialize fft as signal values\n");
     db_to_comp(sig, gpu_res, N);
 
     /* allocate device memory */ 
-    Comp *d_res, *d_res_copy;
+    // printf("allocate device memory\n");
+
+    cuDoubleComplex *d_res, *d_res_copy;
     double *d_amp;
 
     cudaError_t e = cudaMalloc((void**)&d_res, comp_bytesize);
@@ -260,47 +279,79 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
     ck_total -> clockResume();
 
     /* data transfer - host -> dev */
+    // printf("data transfer - host -> dev\n");
     ck_mem_transfer -> clockResume();
-
-    // ck_mem_transfer -> clockResume();
     e = cudaMemcpy(d_res, gpu_res, comp_bytesize, cudaMemcpyHostToDevice);
     checkCudaError(e);
     ck_mem_transfer -> clockPause();
 
     /* cal Fourier efficients */
+    // printf("cal Fourier efficients \n");
     ck_kernels -> clockResume();
     int depth = (int)log2(N);
     int half_len = N / 2;
     for(int l=2; l <= N; l<<=1){ 
         int itvl = N / l;
-
+        
+        // printf("\tupdate data \n");
         gpu_update_data<<<total_gridSize, blockSize>>>(d_res, d_res_copy, N, l);
         e=cudaDeviceSynchronize();
 
+        // printf("\tfft \n");
         gpu_fft<<<half_gridSize, blockSize>>>(d_res, d_res_copy, l, half_len, itvl);
         e=cudaDeviceSynchronize();
 
 	    checkCudaError(e);
     }
-
+    // printf("amplitude \n");
     gpu_cal_amp<<<total_gridSize, blockSize>>>(d_res, d_amp, half_len);
     ck_kernels -> clockPause();
 
 
     /* data transfer - dev -> host */
+    // printf("data transfer - dev -> host\n");
     ck_mem_transfer -> clockResume();
     e = cudaMemcpy(gpu_amp, d_amp, db_bytesize, cudaMemcpyDeviceToHost);
     checkCudaError(e);
     ck_mem_transfer -> clockPause();
 
+    ck_total -> clockPause();
 
     /* free device memory */
     cudaFree(d_res_copy);
     cudaFree(d_res);
     cudaFree(d_amp);
 
-    ck_total -> clockPause();
+    if(cudaDeviceSynchronize() != cudaSuccess){
+        printf("Cuda error: failed to synchronize\n");
+    }
 }
+
+// void cal_using_cufft(cufftDoubleReal* input, mkClockMeasure* ck){
+//     cufftHandle plan;
+//     cufftDouleComplex *output;
+//     cudaMalloc((void**)&data, sizeof(cufftComplex)*NX*BATCH);
+
+//     ck->Resume();
+//     /* create 1D FFT plan */
+//     if(cufftPlan1d(&plan, NX, CUFFT C2C, BATCH) != CUFFT_SUCCESS){
+//         printf("CUFFT error: paln creation failed\n");
+//     }
+
+//     /* execute cuFFT plan for transformation */
+//     if (cufftExecD2C(plan, input, output) != CUFFT_SUCCESS){
+//         printf("CUFFT error: ExecD2C forward failed\n");
+//     }
+//     ck->Pause();
+
+//     if(cudaDeviceSynchronize() != cudaSuccess){
+//         printf("Cuda error: failed to synchronize\n");
+//     }
+
+//     /* destroy plan */
+//     cufftDestroy(plan);
+//     cudaFree(data);
+// }
 
 
 int main(void){
@@ -334,7 +385,7 @@ int main(void){
     }
 
 
-    if(compareResult(fft_amp_rec, gpu_amp, N) && compareResult(fft_amp_iter, fft_amp_rec, N)){
+    if(compareResult(fft_amp_rec, gpu_amp, N) && compareResult(fft_amp_iter, fft_amp_rec, N)){ 
         printf("SAMPLING_RATE : %d\nITERATION : %d\n\n", SAMPLING_RATE, MAX_ITER);
         printf("-------------------[CPU] FFT - recursive ---------------------\n");
         ckCpu_fft_recur->clockPrint();
@@ -344,8 +395,6 @@ int main(void){
         ckGpu_mem_transfer->clockPrint();
         ckGpu_exec->clockPrint();
         ckGpu_fft->clockPrint();
-
-
     }
     else{
         printf("Error: the two are not the same\n");
@@ -353,6 +402,6 @@ int main(void){
     // save_data(sample_points, sig,  "data/original_signal.txt");
     save_data(freq, fft_amp_rec, "data/fft_freq_rec.txt");
     save_data(freq, fft_amp_iter, "data/fft_freq_iter.txt");
-    save_data(freq, gpu_amp, "data/gpu_fft_freq.txt");
+    // save_data(freq, gpu_amp, "data/gpu_fft_freq.txt");
     save_data(sample_points, sig, "data/original_signal.txt");
 }
