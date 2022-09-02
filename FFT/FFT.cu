@@ -24,8 +24,8 @@
 #include <cufft.h>
 #include <cuComplex.h>
 
-#define NX 256
-#define BATCH 32
+#define NX 2048
+#define BATCH 64
 
 const int SAMPLING_RATE = 131072;
 const int N = SAMPLING_RATE;
@@ -40,6 +40,8 @@ cuDoubleComplex fft_res_rec[N], fft_res_iter[N];
 /* gpu */
 double gpu_amp[N];
 cuDoubleComplex gpu_res[N];
+/* cuFFT */
+double cufft_amp[N];
 int db_bytesize = N * sizeof(double);
 int comp_bytesize = N * sizeof(cuDoubleComplex);
 
@@ -222,7 +224,7 @@ void cpu_cal_fft_iterative(double* sample_points, double* sig, mkClockMeasure* c
     ck->clockPause();
 }
 
-__global__ void gpu_cal_amp(cuDoubleComplex* d_res, double* d_amp, int half_len){
+__global__ void gpu_cal_amp(cuDoubleComplex* d_res, double* d_amp){
     int k = blockDim.x * blockIdx.x + threadIdx.x;
 
     d_amp[k] = 2 * sqrt(pow(cuCreal(d_res[k]), 2) + pow(cuCimag(d_res[k]), 2)) / N;
@@ -265,15 +267,14 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
 
     /* allocate device memory */ 
     // printf("allocate device memory\n");
-
     cuDoubleComplex *d_res, *d_res_copy;
     double *d_amp;
 
-    cudaError_t e = cudaMalloc((void**)&d_res, comp_bytesize);
+    cudaError_t e = cudaMallocHost((void**)&d_res, comp_bytesize);
     checkCudaError(e);
-    e = cudaMalloc((void**)&d_res_copy, comp_bytesize);
+    e = cudaMallocHost((void**)&d_res_copy, comp_bytesize);
     checkCudaError(e);
-    e = cudaMalloc((void**)&d_amp, db_bytesize);
+    e = cudaMallocHost((void**)&d_amp, db_bytesize);
     checkCudaError(e);
 
     ck_total -> clockResume();
@@ -304,7 +305,7 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
 	    checkCudaError(e);
     }
     // printf("amplitude \n");
-    gpu_cal_amp<<<total_gridSize, blockSize>>>(d_res, d_amp, half_len);
+    gpu_cal_amp<<<total_gridSize, blockSize>>>(d_res, d_amp);
     ck_kernels -> clockPause();
 
 
@@ -321,37 +322,42 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
     cudaFree(d_res_copy);
     cudaFree(d_res);
     cudaFree(d_amp);
-
-    if(cudaDeviceSynchronize() != cudaSuccess){
-        printf("Cuda error: failed to synchronize\n");
-    }
 }
 
-// void cal_using_cufft(cufftDoubleReal* input, mkClockMeasure* ck){
-//     cufftHandle plan;
-//     cufftDouleComplex *output;
-//     cudaMalloc((void**)&data, sizeof(cufftComplex)*NX*BATCH);
+void cal_using_cufft(cufftDoubleReal* input, mkClockMeasure* ck){
+    /* allocate device memory */ 
+    //amplitude related
+    double *d_amp;
+    cudaMalloc((void**)&d_amp, db_bytesize);
+    //cufft related
+    cufftHandle plan;
+    cufftDoubleComplex *output;
+    cudaMalloc((void**)&output, sizeof(cufftComplex)*NX*BATCH);
 
-//     ck->Resume();
-//     /* create 1D FFT plan */
-//     if(cufftPlan1d(&plan, NX, CUFFT C2C, BATCH) != CUFFT_SUCCESS){
-//         printf("CUFFT error: paln creation failed\n");
-//     }
+    ck->clockResume();
+    /* create 1D FFT plan */
+    if(cufftPlan1d(&plan, NX, CUFFT_D2Z, BATCH) != CUFFT_SUCCESS){
+        printf("CUFFT error: paln creation failed\n");
+    }
 
-//     /* execute cuFFT plan for transformation */
-//     if (cufftExecD2C(plan, input, output) != CUFFT_SUCCESS){
-//         printf("CUFFT error: ExecD2C forward failed\n");
-//     }
-//     ck->Pause();
+    /* execute cuFFT plan for transformation */
+    if (cufftExecD2Z(plan, input, output) != CUFFT_SUCCESS){
+        printf("CUFFT error: ExecD2C forward failed\n");
+    }
+    ck->clockPause();
 
-//     if(cudaDeviceSynchronize() != cudaSuccess){
-//         printf("Cuda error: failed to synchronize\n");
-//     }
+    gpu_cal_amp<<<total_gridSize, blockSize>>>(output, d_amp);
+    cudaMemcpy(cufft_amp, d_amp, db_bytesize, cudaMemcpyDeviceToHost);
 
-//     /* destroy plan */
-//     cufftDestroy(plan);
-//     cudaFree(data);
-// }
+    // if(cudaDeviceSynchronize() != cudaSuccess){
+    //     printf("Cuda error: failed to synchronize\n");
+    // }
+
+    /* destroy plan */
+    cufftDestroy(plan);
+    cudaFree(output);
+    cudaFree(d_amp);
+}
 
 
 int main(void){
@@ -366,11 +372,13 @@ int main(void){
     mkClockMeasure *ckGpu_mem_transfer = new mkClockMeasure("MEMORY TRANSFER");
     mkClockMeasure *ckGpu_exec = new mkClockMeasure("KERNELS");
     mkClockMeasure *ckGpu_fft = new mkClockMeasure("GPU - FFT (TOTAL)");
+    mkClockMeasure *ck_cufft = new mkClockMeasure("cuFFT");
     ckCpu_fft_recur->clockReset();
     ckCpu_fft_iter->clockReset();
     ckGpu_mem_transfer->clockReset();
     ckGpu_exec->clockReset();
     ckGpu_fft->clockReset();
+    ck_cufft->clockReset();
 
 
     for(int i=0; i<MAX_ITER; i++){
@@ -382,19 +390,25 @@ int main(void){
 
         /* GPU - FFT */
         gpu_cal_fft(sample_points, sig, ckGpu_mem_transfer, ckGpu_exec, ckGpu_fft);
+
+        /* cufft */
+        cal_using_cufft(sig, ck_cufft);
     }
 
 
     if(compareResult(fft_amp_rec, gpu_amp, N) && compareResult(fft_amp_iter, fft_amp_rec, N)){ 
         printf("SAMPLING_RATE : %d\nITERATION : %d\n\n", SAMPLING_RATE, MAX_ITER);
-        printf("-------------------[CPU] FFT - recursive ---------------------\n");
-        ckCpu_fft_recur->clockPrint();
+        // printf("-------------------[CPU] FFT - recursive ---------------------\n");
+        // ckCpu_fft_recur->clockPrint();
         printf("\n-------------------[CPU] FFT - iterative---------------------\n");
         ckCpu_fft_iter->clockPrint();
         printf("\n-------------------[GPU] FFT --------------------------------\n");
         ckGpu_mem_transfer->clockPrint();
         ckGpu_exec->clockPrint();
         ckGpu_fft->clockPrint();
+        printf("\n------------------- CUFFT --------------------------------\n");
+        ck_cufft->clockPrint();
+
     }
     else{
         printf("Error: the two are not the same\n");
@@ -402,6 +416,7 @@ int main(void){
     // save_data(sample_points, sig,  "data/original_signal.txt");
     save_data(freq, fft_amp_rec, "data/fft_freq_rec.txt");
     save_data(freq, fft_amp_iter, "data/fft_freq_iter.txt");
-    // save_data(freq, gpu_amp, "data/gpu_fft_freq.txt");
+    save_data(freq, gpu_amp, "data/gpu_fft_freq.txt");
+    save_data(freq, cufft_amp, "data/cufft_freq.txt");
     save_data(sample_points, sig, "data/original_signal.txt");
 }
