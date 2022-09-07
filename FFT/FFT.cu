@@ -24,13 +24,16 @@
 #include <cufft.h>
 #include <cuComplex.h>
 
-#define NX 2048
-#define BATCH 64
+#define N 131072
+#define SAMPLING_RATE N
+#define BLOCK_SIZE 32
+#define GRID_SIZE N/BLOCK_SIZE
+#define BATCH 1
+#define NX N
 
-const int SAMPLING_RATE = 131072;
-const int N = SAMPLING_RATE;
-const int FREQ_NUM = 3;
-const int MAX_ITER = 1;
+#define FREQ_NUM 3
+#define MAX_ITER 10
+
 
 double freq_amp_ph[FREQ_NUM][3] = {{1, 3, 0}, {4, 1, 0}, {7, 0.5, 0}};
 double sample_points[N], freq[N], sig[N];
@@ -46,11 +49,9 @@ int db_bytesize = N * sizeof(double);
 int comp_bytesize = N * sizeof(cuDoubleComplex);
 
 /* thread, grid size */ 
-int thread = 64;    // block size = half length of signal (시그널의 주기성 때문)
-int tbSize = N/thread;
-dim3 half_gridSize(tbSize/2, 1, 1);
-dim3 total_gridSize(tbSize, 1, 1);
-dim3 blockSize(thread, 1, 1);
+dim3 half_gridSize(GRID_SIZE/2, 1, 1);
+dim3 total_gridSize(GRID_SIZE, 1, 1);
+dim3 blockSize(BLOCK_SIZE, 1, 1);
 
 
 /* basic functions */
@@ -298,9 +299,8 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
 
 	    checkCudaError(e);
     }
-    gpu_cal_amp<<<total_gridSize, blockSize>>>(d_res, d_amp);
     ck_kernels -> clockPause();
-
+    gpu_cal_amp<<<total_gridSize, blockSize>>>(d_res, d_amp);
 
     /* data transfer - dev -> host */
     ck_mem_transfer -> clockResume();
@@ -323,27 +323,27 @@ void cal_using_cufft(cufftDoubleReal* signal, mkClockMeasure* ck){
     cudaMalloc((void**)&d_amp, db_bytesize);
     //cufft related
     cufftHandle plan;
-    cufftDoubleComplex *output;
-    cufftDoubleReal *input;
-    cudaMalloc((void**)&output, sizeof(cufftComplex)*NX*BATCH);
-    cudaMalloc((void**)&input, db_bytesize);
+    cufftDoubleComplex *data;
+    cudaMalloc((void**)&data, comp_bytesize);
+    cufftDoubleComplex sig_comp[N];
+    db_to_comp(signal, sig_comp, N);
 
     //copy signal values to device(cufft needs to have all the data in the device)
-    cudaMemcpy(input, signal, db_bytesize, cudaMemcpyHostToDevice);
+    cudaMemcpy(data, sig_comp, comp_bytesize, cudaMemcpyHostToDevice);
 
-    ck->clockResume();
     /* create 1D FFT plan */
-    if(cufftPlan1d(&plan, NX, CUFFT_D2Z, BATCH) != CUFFT_SUCCESS){
+    if(cufftPlan1d(&plan, NX, CUFFT_Z2Z, BATCH) != CUFFT_SUCCESS){
         printf("CUFFT error: paln creation failed\n");
     }
 
     /* execute cuFFT plan for transformation */
-    if (cufftExecD2Z(plan, input, output) != CUFFT_SUCCESS){
+    ck->clockResume();
+    if (cufftExecZ2Z(plan, data, data, CUFFT_FORWARD) != CUFFT_SUCCESS){
         printf("CUFFT error: ExecD2C forward failed\n");
     }
     ck->clockPause();
 
-    gpu_cal_amp<<<total_gridSize, blockSize>>>(output, d_amp);
+    gpu_cal_amp<<<total_gridSize, blockSize>>>(data, d_amp);
     cudaMemcpy(cufft_amp, d_amp, db_bytesize, cudaMemcpyDeviceToHost);
 
     if(cudaDeviceSynchronize() != cudaSuccess){
@@ -352,7 +352,7 @@ void cal_using_cufft(cufftDoubleReal* signal, mkClockMeasure* ck){
 
     /* destroy plan */
     cufftDestroy(plan);
-    cudaFree(output);
+    cudaFree(data);
     cudaFree(d_amp);
 }
 
