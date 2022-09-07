@@ -23,11 +23,10 @@
 #include "mkClockMeasure.h"
 #include "mkCuda.h"
 
-
 const int SAMPLING_RATE = 131072;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
-const int MAX_ITER = 1;
+const int MAX_ITER = 10;
 int db_bytesize = N * sizeof(double);
 int comp_bytesize = N * 2 * sizeof(double);
 
@@ -41,7 +40,7 @@ Comp gpu_x[N];
 double gpu_idft_sig[N], gpu_amp[N];
 
 // thread, grid size */ 
-int thread = 64;
+int thread = 32;
 int tbSize = N/thread;
 dim3 gridSize(tbSize, 1, 1);
 dim3 blockSize(thread, 1, 1);
@@ -111,22 +110,26 @@ void cpu_dft(mkClockMeasure* ck){
     ck->clockPause();
 }
 
-__global__ void gpu_dft(Comp* d_x, double* d_amp, double* d_sig, int N){
+__global__ void gpu_cal_amp(Comp* d_res, double* d_amp){
+    int k = blockDim.x * blockIdx.x + threadIdx.x;
+
+    d_amp[k] = 2 * sqrt(pow(d_res[k].r, 2) + pow(d_res[k].i, 2)) / N;
+}
+
+__global__ void gpu_dft(Comp* d_x, double* d_sig, int N){
     //1 freq = 1 thread
     int k = blockIdx.x * blockDim.x + threadIdx.x;
     double xi=0, xr=0;
     double exp = 2 * M_PI * k / N;
-
 
     for(int n=0; n<N; n++){
         double bn = exp * n;
         xi -= d_sig[n] * sin(bn);
         xr += d_sig[n] * cos(bn);
     }
+
     d_x[k].i = xi;
     d_x[k].r = xr;
-    d_amp[k] =  2 * sqrt(pow(xr, 2) + pow(xi, 2)) / N;
-
     // printf("frequency: %d\tamplitude: %lf\t sig: %f\n", k, d_x[k], d_sig[k]);
     // printf("k: %d\n", k);
 }
@@ -150,10 +153,13 @@ void cal_gpu_dft(mkClockMeasure* ck_mem_transfer, mkClockMeasure* ck_kernel, mkC
     ck_mem_transfer->clockPause();
 
 
-    // launch kernel
+    // kernel: cal dft
     ck_kernel->clockResume();
-    gpu_dft<<<gridSize, blockSize>>>(d_x, d_amp, d_sig, N); 
+    gpu_dft<<<gridSize, blockSize>>>(d_x, d_sig, N); 
     ck_kernel->clockPause();
+
+    // kernel: cal amplitude
+    gpu_cal_amp<<<gridSize, blockSize>>>(d_x, d_amp);
 
     // memory transfer: device -> host 
     ck_mem_transfer->clockResume();
@@ -235,8 +241,6 @@ void cal_gpu_idft(mkClockMeasure* ck_mem_transfer, mkClockMeasure* ck_kernel, mk
     cudaFree(d_idft_sig);
 }
 
-
-
 int main(void){
     // int sampling_rates = [64, 256, 1024, 4096]
     printf("SAMPLING_RATE : %d\nMAX_ITERATION : %d\n\n", SAMPLING_RATE, MAX_ITER);
@@ -271,8 +275,6 @@ int main(void){
         /* GPU - IDFT */  
         cal_gpu_idft(ckGpu_idft_mem_transfer, ckGpu_idft_kernels, ckGpu_idft);
     }
-
-
 
 
     /* print DFT performance */
