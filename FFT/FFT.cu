@@ -262,11 +262,9 @@ __global__ void gpu_fft(cuDoubleComplex* d_res, cuDoubleComplex* d_res_copy, int
 
 void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_transfer, mkClockMeasure* ck_kernels, mkClockMeasure* ck_total){
     /* initialize fft as signal values */
-    // printf("initialize fft as signal values\n");
     db_to_comp(sig, gpu_res, N);
 
     /* allocate device memory */ 
-    // printf("allocate device memory\n");
     cuDoubleComplex *d_res, *d_res_copy;
     double *d_amp;
 
@@ -280,37 +278,31 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
     ck_total -> clockResume();
 
     /* data transfer - host -> dev */
-    // printf("data transfer - host -> dev\n");
     ck_mem_transfer -> clockResume();
     e = cudaMemcpy(d_res, gpu_res, comp_bytesize, cudaMemcpyHostToDevice);
     checkCudaError(e);
     ck_mem_transfer -> clockPause();
 
     /* cal Fourier efficients */
-    // printf("cal Fourier efficients \n");
     ck_kernels -> clockResume();
     int depth = (int)log2(N);
     int half_len = N / 2;
     for(int l=2; l <= N; l<<=1){ 
         int itvl = N / l;
         
-        // printf("\tupdate data \n");
         gpu_update_data<<<total_gridSize, blockSize>>>(d_res, d_res_copy, N, l);
         e=cudaDeviceSynchronize();
 
-        // printf("\tfft \n");
         gpu_fft<<<half_gridSize, blockSize>>>(d_res, d_res_copy, l, half_len, itvl);
         e=cudaDeviceSynchronize();
 
 	    checkCudaError(e);
     }
-    // printf("amplitude \n");
     gpu_cal_amp<<<total_gridSize, blockSize>>>(d_res, d_amp);
     ck_kernels -> clockPause();
 
 
     /* data transfer - dev -> host */
-    // printf("data transfer - dev -> host\n");
     ck_mem_transfer -> clockResume();
     e = cudaMemcpy(gpu_amp, d_amp, db_bytesize, cudaMemcpyDeviceToHost);
     checkCudaError(e);
@@ -324,7 +316,7 @@ void gpu_cal_fft(double* sample_points, double* sig, mkClockMeasure* ck_mem_tran
     cudaFree(d_amp);
 }
 
-void cal_using_cufft(cufftDoubleReal* input, mkClockMeasure* ck){
+void cal_using_cufft(cufftDoubleReal* signal, mkClockMeasure* ck){
     /* allocate device memory */ 
     //amplitude related
     double *d_amp;
@@ -332,7 +324,12 @@ void cal_using_cufft(cufftDoubleReal* input, mkClockMeasure* ck){
     //cufft related
     cufftHandle plan;
     cufftDoubleComplex *output;
+    cufftDoubleReal *input;
     cudaMalloc((void**)&output, sizeof(cufftComplex)*NX*BATCH);
+    cudaMalloc((void**)&input, db_bytesize);
+
+    //copy signal values to device(cufft needs to have all the data in the device)
+    cudaMemcpy(input, signal, db_bytesize, cudaMemcpyHostToDevice);
 
     ck->clockResume();
     /* create 1D FFT plan */
@@ -349,9 +346,9 @@ void cal_using_cufft(cufftDoubleReal* input, mkClockMeasure* ck){
     gpu_cal_amp<<<total_gridSize, blockSize>>>(output, d_amp);
     cudaMemcpy(cufft_amp, d_amp, db_bytesize, cudaMemcpyDeviceToHost);
 
-    // if(cudaDeviceSynchronize() != cudaSuccess){
-    //     printf("Cuda error: failed to synchronize\n");
-    // }
+    if(cudaDeviceSynchronize() != cudaSuccess){
+        printf("Cuda error: failed to synchronize\n");
+    }
 
     /* destroy plan */
     cufftDestroy(plan);
@@ -396,10 +393,10 @@ int main(void){
     }
 
 
-    if(compareResult(fft_amp_rec, gpu_amp, N) && compareResult(fft_amp_iter, fft_amp_rec, N)){ 
+    if(compareResult(fft_amp_rec, gpu_amp, N) && compareResult(fft_amp_iter, fft_amp_rec, N) && compareResult(fft_amp_iter, cufft_amp, N)){ 
         printf("SAMPLING_RATE : %d\nITERATION : %d\n\n", SAMPLING_RATE, MAX_ITER);
-        // printf("-------------------[CPU] FFT - recursive ---------------------\n");
-        // ckCpu_fft_recur->clockPrint();
+        printf("-------------------[CPU] FFT - recursive ---------------------\n");
+        ckCpu_fft_recur->clockPrint();
         printf("\n-------------------[CPU] FFT - iterative---------------------\n");
         ckCpu_fft_iter->clockPrint();
         printf("\n-------------------[GPU] FFT --------------------------------\n");
