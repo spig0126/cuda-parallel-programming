@@ -1,10 +1,20 @@
+#pragma once
 #include <cufft.h>  
 #include <cuComplex.h>
+#include <vector>
 
+
+#define FLOAT_LEN_BITSIZE 32
+#define FLOAT_EXP_BITSIZE 8
+#define FLOAT_MANT_BITSIZE 23
+#define DOUBLE_EXP_BITSIZE 11
+#define DOUBLE_MANT_BITSIZE 52
+#define MAX_BITSIZE 100
+
+using namespace std;
 
 typedef float fp;
 typedef cuComplex fpComplex;
-typedef bfpNumFloat bfpNum;
 
 typedef struct {
     unsigned short sign;   // 1 bit
