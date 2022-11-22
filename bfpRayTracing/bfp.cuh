@@ -268,7 +268,7 @@ bfpNumFloat div_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
 
 /* arithmetic operations for entire block */
 color add_color_bfpBlock(bfpBlock block){
-    vector<bfpNumFloat> res(3, {0,block.common_exp,0});
+    vector<bfpNumFloat> res(3, {0, block.common_exp, 0});
 
     //1. converision to 2's complment for negative mantissas
     for(int i=0; i<block.sign.size(); i++){
@@ -320,6 +320,34 @@ color add_color_bfpBlock(bfpBlock block){
     // print_bfpNumFloat(res[1]);
     // print_bfpNumFloat(res[2]);
     return bfpNumFloats_to_color(res);
+}
+
+color mult_color_bfpBlock(bfpBlock block){
+    vector<bfpNumFloat> res(3, {0, block.common_exp + block.common_exp - 127, 0});
+
+    //1. assign sign
+    for(int i=0; i<block.sign.size(); i+=3){
+        res[0].sign ^= block.sign[i];
+        res[1].sign ^= block.sign[i + 1];
+        res[2].sign ^= block.sign[i + 2];
+    }
+
+    vector<unsigned long long> res_temp(3, 1);
+    for(int i=0; i<block.M.size(); i+=3){
+        //2. multiply mantissas
+        res_temp[0] *= (unsigned long long) block.M[i];
+        res_temp[1] *= (unsigned long long) block.M[i + 1];
+        res_temp[2] *= (unsigned long long) block.M[i + 2];
+
+        //3. normalization
+        for(int j=0; j<3; j++){
+            while((res_temp[i] & 0x800000000000) != 0x800000000000 && (res_temp[i] != 0)){
+                res_temp[i] <<= 1;
+                res.exp-=1;
+            }
+            
+        }
+    }
 }
 
 

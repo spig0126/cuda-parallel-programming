@@ -49,7 +49,7 @@ vector<bfpNumFloat> color_to_bfpNumFloat(color c){
     vector<bfpNumFloat> c_formatted;
 
     for(int i=0; i<3; i++){
-        c_formatted.push_back(float_to_bfpNumFloat(c[0]));
+        c_formatted.push_back(float_to_bfpNumFloat(c[i]));
     }
 
     return c_formatted;
@@ -62,6 +62,10 @@ color bfpNumFloats_to_color(vector<bfpNumFloat> v){
 
     return color(r, g, b);
 }
+
+
+
+
 
 /* block formatting */
 bfpBlock createBfpBlock(vector<float> X){
@@ -88,6 +92,7 @@ bfpBlock createBfpBlock(vector<float> X){
     //save aligned mantissas to block
     for(int i=0; i<temp.size(); i++){
         block.M.push_back(temp[i].mant >> (max_exp - temp[i].exp));
+        block.sign.push_back(temp[i].sign);
     }
 
     return block;
@@ -107,7 +112,7 @@ bfpBlock createColorBfpBlock(vector<color> colors){
 
     //find common exponent
     unsigned int max_exp = 0;
-    for(int i=0; i<colors.size(); i++){
+    for(int i=0; i<temp.size(); i++){
         if(temp[i].exp > max_exp){
             max_exp = temp[i].exp;
         }
@@ -116,13 +121,9 @@ bfpBlock createColorBfpBlock(vector<color> colors){
     //save common exponent
     block.common_exp = max_exp;
 
-    //save signs
-    for(int i=0; i<colors.size(); i++){
-        block.sign[i] = temp[i].sign;
-    }
-
-    //save aligned mantissas to block
+    //save signs and aligned mantissas to block
     for(int i=0; i<temp.size(); i++){
+        block.sign.push_back(temp[i].sign);
         block.M.push_back(temp[i].mant >> (max_exp - temp[i].exp));
     }
 
@@ -267,11 +268,86 @@ bfpNumFloat div_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
 
 /* arithmetic operations for entire block */
 color add_color_bfpBlock(bfpBlock block){
-    color res_color(0,0,0);
-    bfpNumFloat res = {0, 0, 0};
+    vector<bfpNumFloat> res(3, {0, block.common_exp, 0});
 
     //1. converision to 2's complment for negative mantissas
+    for(int i=0; i<block.sign.size(); i++){
+        if(block.sign[i]){
+            block.M[i] = ~block.M[i] + 1;
+        }
+    }
 
+    //2. add mantissas
+    for(int i=0; i<block.M.size(); i+=3){
+        res[0].mant += block.M[i];
+        res[1].mant += block.M[i + 1];
+        res[2].mant += block.M[i + 2];
+
+        // printBit_sint(res[0].mant, true);
+        // printBit_sint(res[1].mant, true);
+        // printBit_sint(res[2].mant, true);
+    }
+
+    //3. convert to  signed magnitude if negative
+    for(int i=0; i<3; i++){
+        if((res[i].mant & 0x80000000) == 0x80000000){    //if MSB is 1(sign = 1)
+            res[i].mant = ~res[i].mant + 1;
+            res[i].sign = 1;
+        }
+    }
+
+    //4. normalization
+    for(int i=0; i<3; i++){
+        while(res[i].mant & 0x01000000){ //when carry is 1
+            res[i].mant >>= 1;
+            res[i].exp += 1;
+        }
+        while((res[i].mant & 0x00800000) != 0x00800000){   //11.01 x 2^1 = 1.101 x 2^2
+            res[i].mant <<= 1;
+            res[i].exp -= 1;
+        }
+        // cout << "\nafter normalitzation\n";
+        // printBit_bfpNumFloat(res[i], true);
+    }
+
+    //5. remove implicit 1
+    for(int i=0; i<3; i++){
+        res[i].mant &= 0x007fffff;
+    }
+
+    // cout << "\nresult of addition\n";
+    // print_bfpNumFloat(res[0]);
+    // print_bfpNumFloat(res[1]);
+    // print_bfpNumFloat(res[2]);
+    return bfpNumFloats_to_color(res);
+}
+
+color mult_color_bfpBlock(bfpBlock block){
+    vector<bfpNumFloat> res(3, {0, block.common_exp + block.common_exp - 127, 0});
+
+    //1. assign sign
+    for(int i=0; i<block.sign.size(); i+=3){
+        res[0].sign ^= block.sign[i];
+        res[1].sign ^= block.sign[i + 1];
+        res[2].sign ^= block.sign[i + 2];
+    }
+
+    vector<unsigned long long> res_temp(3, 1);
+    for(int i=0; i<block.M.size(); i+=3){
+        //2. multiply mantissas
+        res_temp[0] *= (unsigned long long) block.M[i];
+        res_temp[1] *= (unsigned long long) block.M[i + 1];
+        res_temp[2] *= (unsigned long long) block.M[i + 2];
+
+        //3. normalization
+        for(int j=0; j<3; j++){
+            while((res_temp[i] & 0x800000000000) != 0x800000000000 && (res_temp[i] != 0)){
+                res_temp[i] <<= 1;
+                res.exp-=1;
+            }
+            
+        }
+    }
 }
 
 
