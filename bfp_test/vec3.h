@@ -16,59 +16,61 @@
 #include <cmath>
 #include <iostream>
 
+//for test.cu compiling
+#include "utility.h"
 
 // Usings
 
 using std::sqrt;
-using namespace std;
+
 
 // Classes
 
 class vec3 {
-public:
-	vec3() : e{ 0,0,0 } {}
-	vec3(float e0, float e1, float e2) : e{ e0, e1, e2 } {}
+	public:
+		vec3() : e{ 0,0,0 } {}
+		vec3(float e0, float e1, float e2) : e{ e0, e1, e2 } {}
 
-    	float x() const { return e[0]; }
-    	float y() const { return e[1]; }
-	float z() const { return e[2]; }
+		float x() const { return e[0]; }
+		float y() const { return e[1]; }
+		float z() const { return e[2]; }
 
     	vec3 operator-() const { return vec3(-e[0], -e[1], -e[2]); }
-	float operator[](int i) const { return e[i]; }
+		float operator[](int i) const { return e[i]; }
     	float& operator[](int i) { return e[i]; }
 
     	vec3& operator+=(const vec3& v) {
 	    	e[0] += v.e[0];
-		e[1] += v.e[1];
-		e[2] += v.e[2];
+			e[1] += v.e[1];
+			e[2] += v.e[2];
 
-		return *this;
+			return *this;
     	}
 
     	vec3& operator*=(const float t) {
-		e[0] *= t;
-		e[1] *= t;
-		e[2] *= t;
-	
-		return *this;
+			e[0] *= t;
+			e[1] *= t;
+			e[2] *= t;
+		
+			return *this;
     	}
 
     	vec3& operator/=(const float t) {
-		return *this *= 1 / t;
+			return *this *= 1 / t;
     	}
 
-    	float length() const {
-		return sqrt(length_squared());
+		float length() const {		
+			return sqrt(length_squared());
     	}
 
     	float length_squared() const {
-		return e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
+			return e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
     	}
 
     	bool near_zero() const {
-		// Return true if the vector is close to zero in all dimensions.
-		const auto s = 1e-8;
-		return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
+			// Return true if the vector is close to zero in all dimensions.
+			const auto s = 1e-8;
+			return (fabs(e[0]) < s) && (fabs(e[1]) < s) && (fabs(e[2]) < s);
     	}
 
     	static vec3 random() {
@@ -80,7 +82,7 @@ public:
     	}
 
 
-public:
+	public:
     	float e[3];
 };
 
@@ -113,6 +115,10 @@ inline vec3 operator*(const vec3& v, float t) {
 
 inline vec3 operator/(vec3 v, float t) {
     	return (1 / t) * v;
+}
+
+inline bool isequal(vec3 v1, vec3 v2){
+		return v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2];
 }
 
 inline float dot(const vec3& u, const vec3& v) {
