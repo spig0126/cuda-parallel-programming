@@ -23,10 +23,10 @@
 #include "mkClockMeasure.h"
 #include "mkCuda.h"
 
-const int SAMPLING_RATE = 131072;
+const int SAMPLING_RATE = 262144;
 const int N = SAMPLING_RATE;
 const int FREQ_NUM = 3;
-const int MAX_ITER = 10;
+const int MAX_ITER = 1;
 int db_bytesize = N * sizeof(double);
 int comp_bytesize = N * 2 * sizeof(double);
 
