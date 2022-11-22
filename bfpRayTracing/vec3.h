@@ -117,6 +117,10 @@ inline vec3 operator/(vec3 v, float t) {
     	return (1 / t) * v;
 }
 
+inline bool isequal(vec3 v1, vec3 v2){
+		return v1[0] == v2[0] && v1[1] == v2[1] && v1[2] == v2[2];
+}
+
 inline float dot(const vec3& u, const vec3& v) {
     	return u.e[0] * v.e[0]
 		+ u.e[1] * v.e[1]
