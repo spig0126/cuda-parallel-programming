@@ -59,6 +59,15 @@ void printBit_bfpNumFloat(bfpNumFloat b, bool nextLine){
     }
 }
 
+void printBit_exp(unsigned int e, bool nextLine){
+    printf("%d => ", e);
+    printBit_uint(e, 8, false);
+    
+    if(nextLine){
+        printf("\n");
+    }
+}
+
 void printBit_mant(int m, bool newLine){
     int temp = m;
     char out[MAX_BITSIZE] = "";
@@ -113,6 +122,7 @@ void printBit_uint(unsigned int num, int len, bool reverse){
 void printBit_float(float f){
     //cast to integer for bitwise operations
     unsigned int* temp = reinterpret_cast<unsigned int*>(&f); 
+    unsigned int orginal_val = *temp;
 
     char out[MAX_BITSIZE] = "";
     for(int i=0; i<32; i++, *temp>>=1){
@@ -130,7 +140,7 @@ void printBit_float(float f){
     for(int i=35; i>=0; i--){
          printf("%c", out[i]);
     }
-    printf(" (0x%.8x)\n", *temp);
+    printf(" (0x%.8x)\n", orginal_val);
 }
 
 void printBit_sint(int num, bool newLine){     //4bits grouped together
@@ -151,7 +161,7 @@ void printBit_sint(int num, bool newLine){     //4bits grouped together
     for(int i=39; i>=0; i--){
          printf("%c", out[i]);
     }
-    printf(" (0x%.8x)", num);
+    printf(" (0x%x)", num);
 
     if(newLine){
         printf("\n");
@@ -176,6 +186,8 @@ void printBit_ulong(long long num, bool newLine){   //4bits grouped together
     for(int i=79; i>=0; i--){
          printf("%c", out[i]);
     }
+
+    printf("\t(%lx)", num);
 
     if(newLine){
         printf("\n");
