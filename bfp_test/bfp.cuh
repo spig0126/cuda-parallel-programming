@@ -197,11 +197,11 @@ bfpNumFloat mult_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
     if(ground_bit == 1){
         if(round_bit == 0 && sticky_bits == 0){ //round to even
             if(last_bit == 1){
-                res_temp += 0x0000000001000000;
+                res_temp += 0x000000000800000;
             }
         }
         else{
-            res_temp += 0x0000000001000000; //round up
+            res_temp += 0x000000000800000; //round up
         }
     }
 
@@ -332,43 +332,64 @@ color mult_color_bfpBlock(bfpBlock block){
         res[2].sign ^= block.sign[i + 2];
     }
 
-    vector<unsigned long long> res_temp{(unsigned long long) block.M[0], (unsigned long long) block.M[1], (unsigned long long) block.M[2]};
+    vector<unsigned long long> res_temp{(unsigned long long)block.M[0], (unsigned long long)block.M[1], (unsigned long long)block.M[2]};
 
-    printf("\n=================\n# 0\n");
-    printBit_ulong(res_temp[0], true);
-    printBit_ulong(res_temp[1], true);
-    printBit_ulong(res_temp[2], true);
+    // printf("\n=================\n# 0\n");
+    // printBit_ulong(res_temp[0], true);
+    // printBit_ulong(res_temp[1], true);
+    // printBit_ulong(res_temp[2], true);
 
-    for(int i=3; i<block.M.size() - 3; i+=3){
+    for(int i=3; i<block.M.size(); i+=3){
+
         printf("\n\n======================\n# %d\n", i);
         printBit_ulong(res_temp[0], true);
         printBit_ulong(res_temp[1], true);
         printBit_ulong(res_temp[2], true);
 
-
         //2. multiply mantissas
-        res_temp[0] = (res_temp[0] * (unsigned long long) block.M[i]) >> 23;
-        res_temp[1] = (res_temp[1] * (unsigned long long) block.M[i + 1]) >> 23;
-        res_temp[2] = (res_temp[2] * (unsigned long long) block.M[i + 2]) >> 23;
+        res_temp[0] *= (unsigned long long) block.M[i];
+        res_temp[1] *= (unsigned long long) block.M[i + 1];
+        res_temp[2] *= (unsigned long long) block.M[i + 2];
+ 
+        printf("\nmuliply\n");
+        printBit_ulong(res_temp[0], true);
+        printBit_ulong(res_temp[1], true);
+        printBit_ulong(res_temp[2], true);
 
-        printf("\n");
-        printBit_ulong(res_temp[0] * (unsigned long long) block.M[i], true);
-        printBit_ulong(res_temp[1] * (unsigned long long) block.M[i + 1], true);
-        printBit_ulong(res_temp[2] * (unsigned long long) block.M[i + 2], true);
+        //3 rounding
+        for(int j=0; j<3; j++){
+            unsigned short last_bit =  (unsigned short)((res_temp[j] & 0x0000000001000000) >> 24);
+            unsigned short ground_bit = (unsigned short)((res_temp[j] & 0x0000000000800000) >> 23);
+            unsigned short round_bit =  (unsigned short)((res_temp[j] & 0x0000000000400000) >> 22);
+            unsigned short sticky_bits = (unsigned short)(res_temp[j] & 0x00000000003fffff);
 
+            if(ground_bit == 1){
+                if(round_bit == 0 && sticky_bits == 0){ //round to even
+                    if(last_bit == 1){
+                        res_temp[j] += 0x000000000800000;
+                    }
+                }
+                else{
+                    res_temp[j] += 0x000000000800000; //round up
+                }
+            }
+        }
 
+        printf("\nround\n");
+        printBit_ulong(res_temp[0], true);
+        printBit_ulong(res_temp[1], true);
+        printBit_ulong(res_temp[2], true);
+
+        res_temp[0] >>= 23;
+        res_temp[1] >>= 23;
+        res_temp[2] >>= 23;
+
+        printf("\nshift\n");
+        printBit_ulong(res_temp[0], true);
+        printBit_ulong(res_temp[1], true);
+        printBit_ulong(res_temp[2], true);
     }
-    printf("\n\n======================\n# %d\n", block.M.size() - 3);
-    printBit_ulong(res_temp[0], true);
-    printBit_ulong(res_temp[1], true);
-    printBit_ulong(res_temp[2], true);
-    res_temp[0] *= (unsigned long long) block.M[block.M.size() - 3];
-    res_temp[1] *= (unsigned long long) block.M[block.M.size() - 2];
-    res_temp[2] *= (unsigned long long) block.M[block.M.size() - 1];
-        printf("\n");
-    printBit_ulong(res_temp[0], true);
-    printBit_ulong(res_temp[1], true);
-    printBit_ulong(res_temp[2], true);
+
 
     //3. normalization
     for(int i=0; i<3; i++){
