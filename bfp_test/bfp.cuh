@@ -323,7 +323,7 @@ color add_color_bfpBlock(bfpBlock block){
 }
 
 color mult_color_bfpBlock(bfpBlock block){
-    vector<bfpNumFloat> res(3, {0, block.common_exp + block.common_exp - 127, 0});
+    vector<bfpNumFloat> res(3, {0, block.common_exp * block.M.size() / 3  - 127 * (block.M.size()/3 - 1), 0});
 
     //1. assign sign
     for(int i=0; i<block.sign.size(); i+=3){
@@ -332,22 +332,73 @@ color mult_color_bfpBlock(bfpBlock block){
         res[2].sign ^= block.sign[i + 2];
     }
 
-    vector<unsigned long long> res_temp(3, 1);
-    for(int i=0; i<block.M.size(); i+=3){
-        //2. multiply mantissas
-        res_temp[0] *= (unsigned long long) block.M[i];
-        res_temp[1] *= (unsigned long long) block.M[i + 1];
-        res_temp[2] *= (unsigned long long) block.M[i + 2];
+    vector<unsigned long long> res_temp{(unsigned long long) block.M[0], (unsigned long long) block.M[1], (unsigned long long) block.M[2]};
 
-        //3. normalization
-        for(int j=0; j<3; j++){
-            while((res_temp[i] & 0x800000000000) != 0x800000000000 && (res_temp[i] != 0)){
-                res_temp[i] <<= 1;
-                res.exp-=1;
-            }
-            
+    printf("\n=================\n# 0\n");
+    printBit_ulong(res_temp[0], true);
+    printBit_ulong(res_temp[1], true);
+    printBit_ulong(res_temp[2], true);
+
+    for(int i=3; i<block.M.size() - 3; i+=3){
+        printf("\n\n======================\n# %d\n", i);
+        printBit_ulong(res_temp[0], true);
+        printBit_ulong(res_temp[1], true);
+        printBit_ulong(res_temp[2], true);
+
+
+        //2. multiply mantissas
+        res_temp[0] = (res_temp[0] * (unsigned long long) block.M[i]) >> 23;
+        res_temp[1] = (res_temp[1] * (unsigned long long) block.M[i + 1]) >> 23;
+        res_temp[2] = (res_temp[2] * (unsigned long long) block.M[i + 2]) >> 23;
+
+        printf("\n");
+        printBit_ulong(res_temp[0] * (unsigned long long) block.M[i], true);
+        printBit_ulong(res_temp[1] * (unsigned long long) block.M[i + 1], true);
+        printBit_ulong(res_temp[2] * (unsigned long long) block.M[i + 2], true);
+
+
+    }
+    printf("\n\n======================\n# %d\n", block.M.size() - 3);
+    printBit_ulong(res_temp[0], true);
+    printBit_ulong(res_temp[1], true);
+    printBit_ulong(res_temp[2], true);
+    res_temp[0] *= (unsigned long long) block.M[block.M.size() - 3];
+    res_temp[1] *= (unsigned long long) block.M[block.M.size() - 2];
+    res_temp[2] *= (unsigned long long) block.M[block.M.size() - 1];
+        printf("\n");
+    printBit_ulong(res_temp[0], true);
+    printBit_ulong(res_temp[1], true);
+    printBit_ulong(res_temp[2], true);
+
+    //3. normalization
+    for(int i=0; i<3; i++){
+        while((res_temp[i] & 0x800000000000) != 0x800000000000 && (res_temp[i] != 0)){
+            res_temp[i] <<= 1;
+            res[i].exp-=1;
+        }  
+    }
+
+
+    
+
+    //5. normalization(carry)
+    for(int i=0; i<3; i++){
+        res[i].mant = res_temp[i] >> 23;
+        int carry = res[i].mant >> 24;
+        while(carry > 0){
+            res[i].mant >>= 1;
+            carry >>= 1;
+            res[i].exp += 1;
         }
     }
+
+
+    //6. remove implicit 1
+    for(int i=0; i<3; i++){
+        res[i].mant &= 0x007fffff;
+    }
+
+     return bfpNumFloats_to_color(res);
 }
 
 
