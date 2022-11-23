@@ -1,7 +1,9 @@
+#pragma once
 #include <string.h>
 #include <iostream>
 
 #include "bfpStruct.cuh"
+#include "vec3.h"
 
 void print_bfpNumFloat(bfpNumFloat b);
 void print_bfpBlock(bfpBlock block);
@@ -12,7 +14,7 @@ void printBit_float(float f);
 void printBit_sint(int num, bool newLine);
 void printBit_ulong(long long num, bool newLine);
 
-/* print bfpStructs*/
+/* print Structs*/
 void print_bfpNumFloat(bfpNumFloat b){
     printf("---------BFP component----------\n");
     printf("sign: %d\n", b.sign);
@@ -31,6 +33,16 @@ void print_bfpBlock(bfpBlock block){
         printf("\t");
         printBit_mant(block.M[i], true);
     }
+}
+
+void print_color(color c){
+    cout << "\n\n---------- COLOR ------------------\n";
+    cout << "R: " << c[0] << "\t=> ";
+    printBit_float(c[0]);
+    cout << "G: " << c[1] << "\t=> ";
+    printBit_float(c[1]);
+    cout << "B: " << c[2] << "\t=> ";
+    printBit_float(c[2]);
 }
 
 
