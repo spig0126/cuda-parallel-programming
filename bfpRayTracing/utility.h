@@ -59,8 +59,8 @@ inline int random_int(int min, int max) {
 }
 
 //for test.cu compiling
-// #include "ray.h"
-// #include "vec3.h"
+#include "ray.h"
+#include "vec3.h"
 
 
 #endif
