@@ -1,7 +1,7 @@
 /*
  * =====================================================================================
  *
- *       Filename:  mkClockMeasure.h
+ *       Filename:  mkClockMeasure.hpp
  *
  *    Description: to count clock
  *
@@ -45,7 +45,7 @@ class mkClockMeasure {
 	    (int64_t)(end.tv_nsec - begin.tv_nsec);
   }
   void clockPrint() {
-    printf("mkClockMeasure[");
+    printf("mkClockMeasure[%s][", name.c_str());
     if (count == 0) {
       printf("*None*]\n");
       return;
@@ -67,3 +67,4 @@ class mkClockMeasure {
     printf("]\n");
   }
 };
+

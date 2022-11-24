@@ -17,7 +17,7 @@
 #include <iostream>
 
 //for test.cu compiling
-// #include "utility.h"
+#include "utility.h"
 
 // Usings
 

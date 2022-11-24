@@ -155,11 +155,11 @@ bfpNumFloat add_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
     }
 
     //4. normalization
-    if(res.mant & 0x01000000){  //when carry is 1
+    if(res.mant & 0x01000000){  //when carry is 1 (11.01 x 2^1 = 1.101 x 2^2)
         res.mant >>= 1;
         res.exp += 1;
     }
-    while((res.mant & 0x00800000) != 0x00800000){   //11.01 x 2^1 = 1.101 x 2^2
+    while((res.mant & 0x00800000) != 0x00800000){   //0.01101 x 2^3 = 1.101 x 2^1
         res.mant <<= 1;
         res.exp -= 1;
     }
@@ -189,19 +189,19 @@ bfpNumFloat mult_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
     }
 
     //3 rounding
-    unsigned short last_bit =  (unsigned short)((res_temp & 0x0000000001000000) >> 24);
-    unsigned short ground_bit = (unsigned short)((res_temp & 0x0000000000800000) >> 23);
-    unsigned short round_bit =  (unsigned short)((res_temp & 0x0000000000400000) >> 22);
-    unsigned short sticky_bits = (unsigned short)(res_temp & 0x00000000003fffff);
+    unsigned short last_bit =  (unsigned short)((res_temp & 0x0000000000800000) >> 23);
+    unsigned short ground_bit = (unsigned short)((res_temp & 0x0000000000400000) >> 22);
+    unsigned short round_bit =  (unsigned short)((res_temp & 0x0000000000200000) >> 21);
+    unsigned short sticky_bits = (unsigned short)(res_temp & 0x00000000001fffff);
     res_temp &= 0x0000ffffff000000; //truncate
     if(ground_bit == 1){
         if(round_bit == 0 && sticky_bits == 0){ //round to even
             if(last_bit == 1){
-                res_temp += 0x0000000001000000;
+                res_temp += 0x000000000800000;
             }
         }
         else{
-            res_temp += 0x0000000001000000; //round up
+            res_temp += 0x000000000800000; //round up
         }
     }
 
@@ -323,7 +323,7 @@ color add_color_bfpBlock(bfpBlock block){
 }
 
 color mult_color_bfpBlock(bfpBlock block){
-    vector<bfpNumFloat> res(3, {0, block.common_exp + block.common_exp - 127, 0});
+    vector<bfpNumFloat> res(3, {0, (unsigned int)(block.common_exp * block.M.size() / 3  - 127 * (block.M.size()/3 - 1)), 0});
 
     //1. assign sign
     for(int i=0; i<block.sign.size(); i+=3){
@@ -332,67 +332,61 @@ color mult_color_bfpBlock(bfpBlock block){
         res[2].sign ^= block.sign[i + 2];
     }
 
-    vector<unsigned long long> res_temp(3, 1);
-    for(int i=0; i<block.M.size(); i+=3){
+    vector<unsigned long long> res_temp{(unsigned long long)block.M[0], (unsigned long long)block.M[1], (unsigned long long)block.M[2]};
+
+    for(int i=3; i<block.M.size(); i+=3){
         //2. multiply mantissas
         res_temp[0] *= (unsigned long long) block.M[i];
         res_temp[1] *= (unsigned long long) block.M[i + 1];
         res_temp[2] *= (unsigned long long) block.M[i + 2];
 
-        //3. normalization
+        //3 rounding
         for(int j=0; j<3; j++){
-            while((res_temp[i] & 0x800000000000) != 0x800000000000 && (res_temp[i] != 0)){
-                res_temp[i] <<= 1;
-                res.exp-=1;
+            unsigned short last_bit =  (unsigned short)((res_temp[j] & 0x0000000000800000) >> 22);
+            unsigned short ground_bit = (unsigned short)((res_temp[j] & 0x0000000000400000) >> 22);
+            unsigned short round_bit =  (unsigned short)((res_temp[j] & 0x0000000000200000) >> 21);
+            unsigned short sticky_bits = (unsigned short)(res_temp[j] & 0x00000000001fffff);
+
+            if(ground_bit == 1){
+                if(round_bit == 0 && sticky_bits == 0){ //round to even
+                    if(last_bit == 1){
+                        res_temp[j] += 0x000000000800000;
+                    }
+                }
+                else{
+                    res_temp[j] += 0x000000000800000; //round up
+                }
             }
-            
+        }
+
+        res_temp[0] >>= 23;
+        res_temp[1] >>= 23;
+        res_temp[2] >>= 23;
+    }
+
+
+    //3. normalization
+    for(int i=0; i<3; i++){
+        while((res_temp[i] & 0x800000) != 0x800000 && (res_temp[i] != 0)){
+            res_temp[i] <<= 1;
+            res[i].exp-=1;
+        }  
+    }
+
+    //5. normalization(carry)
+    for(int i=0; i<3; i++){
+        int carry = (int)res_temp[i] >> 24;
+        while(carry > 0){
+            res[i].mant >>= 1;
+            carry >>= 1;
+            res[i].exp += 1;
         }
     }
+
+    //6. remove implicit 1
+    for(int i=0; i<3; i++){
+        res[i].mant = (int)res_temp[i] & 0x007fffff;
+    }
+
+     return bfpNumFloats_to_color(res);
 }
-
-
-// bfpNumFloat add_block_f(bfpBlock block){
-//     bfpNumFloat M[N];
-//     bfpNumFloat res = {0, block.common_exp, 0};
-
-//     // copy block's mantissa list to M[N]
-//     for(int i=0; i<N; i++){
-//         M[i] = block.M[i];
-//     }
-//     // 1. conversion to 2's complement for negative mantissas
-//     for(int i=0; i<N; i++){
-//         if(M[i].sign){
-//             M[i].mant = ~M[i].mant + 1;
-//         }
-//     }
-
-//     //2. add mantissas
-//     for(int i=0; i<N; i++){
-//         res.mant += M[i].mant;
-//     }
-
-//     //3. convert to sign magnitude if addition result is negative
-//     if((res.mant & 0x80000000) == 0x80000000){
-//         res.mant = ~res.mant + 1;
-//         res.sign = 1;
-//     }
-
-//     //4. normalization
-//     int carry = res.mant >> 6;
-//     while(carry > 0){
-//         res.mant >>= 1;
-//         carry >>= 1;
-//         res.exp += 1;
-//     }
-//     while((res.mant & 0x00800000) != 0x00800000){
-//         res.mant <<= 1;
-//         res.exp -= 1;
-//     }
-
-//     //5. remove implicit 1
-//     res.mant &= 0xff7fffff;
-
-//     return res;
-// }
-
-

@@ -2,7 +2,8 @@
 #include "bfp.cuh"
 
 vector<float> a = {2.2, 2.2};
-vector<color> c = {{1, 1, 1}, {2, 2, 2}, {3, 3, 3}};
+vector<color> c = {{2.25010704994, 2.25010704994, 2.25010704994}, {2.21364951134, 2.21364951134, 2.21364951134}, {2.2131459713, 2.2131459713, 2.2131459713}};
+// vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
 
 
 
@@ -18,8 +19,18 @@ int main(void){
     print_bfpBlock(block);
     printf("===============================================\n");
 
-    color res = add_color_bfpBlock(block);
+    color res = mult_color_bfpBlock(block);
     print_color(res);
+    printf("\nactual values:\n");
+    float r=1, g=1, b=1;
+    for(int i=0; i<c.size(); i++){
+        r *= c[i][0];
+        g *= c[i][1];
+        b *= c[i][2];
+    }
+    printBit_float(r);
+    printBit_float(g);
+    printBit_float(b);
     return 0;
 }
 

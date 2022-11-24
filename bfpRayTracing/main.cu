@@ -167,7 +167,7 @@ color bfp_ray_color(const ray& r, const hittable& world, int depth){
 		return res;
 	}
 	else{
-
+		
 	}
 }
 
