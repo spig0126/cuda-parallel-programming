@@ -134,6 +134,7 @@ color ray_color(const ray& r, const hittable& world, int depth) {
 }
 
 
+
 color bfp_recur_get_ray_color(const ray& r, const hittable& world, int depth, vector<color>& ray_colors){
 	//return color(1, 1, 1) when there is color, and color(0,0,0) when max depth has been reached or error
 	hit_record rec;
@@ -167,7 +168,8 @@ color bfp_ray_color(const ray& r, const hittable& world, int depth){
 		return res;
 	}
 	else{
-		
+		bfpBlock block = createColorBfpBlock(ray_colors);
+		return mult_color_bfpBlock(block);
 	}
 }
 
@@ -213,7 +215,6 @@ void cal_pixel_color(int samples_per_pixel, int image_width, int image_height, i
 	// RT18 - PRINT PIXEL VALUES OF THE OUTPUT IMAGE:
 	//printf("  R:%d, G:%d, B:%d\n", array[idx], array[idx+1], array[idx+2]);
 }
-
 void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_height, int max_depth, const hittable& world, camera cam, unsigned char* array, int i, int j){
 	int idx = (j * image_width + i) * 3;
 	color pixel_color(0, 0, 0);
@@ -226,7 +227,7 @@ void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_heigh
 
 		ray cur_ray = cam.get_ray(u, v);
 
-		ray_colors.push_back(ray_color(cur_ray, world, max_depth));
+		ray_colors.push_back(bfp_ray_color(cur_ray, world, max_depth));
 	}
 
 	bfpBlock block = createColorBfpBlock(ray_colors);
@@ -259,9 +260,9 @@ int main() {
 
 	// Image
 	auto aspect_ratio = 16.0 / 9.0;
-	int image_width = 100;  //400
-	int samples_per_pixel = 50;    
-	const int max_depth = 50;
+	int image_width = 1920;  //400
+	int samples_per_pixel = 10;    
+	const int max_depth = 20;
 
 	
 	ckCpu->clockResume();

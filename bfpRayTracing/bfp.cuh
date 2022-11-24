@@ -268,7 +268,7 @@ bfpNumFloat div_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
 
 /* arithmetic operations for entire block */
 color add_color_bfpBlock(bfpBlock block){
-    vector<bfpNumFloat> res(3, {0, block.common_exp, 0});
+    vector<bfpNumFloat> res(3, {0,block.common_exp,0});
 
     //1. converision to 2's complment for negative mantissas
     for(int i=0; i<block.sign.size(); i++){
@@ -321,6 +321,7 @@ color add_color_bfpBlock(bfpBlock block){
     // print_bfpNumFloat(res[2]);
     return bfpNumFloats_to_color(res);
 }
+
 
 color mult_color_bfpBlock(bfpBlock block){
     vector<bfpNumFloat> res(3, {0, (unsigned int)(block.common_exp * block.M.size() / 3  - 127 * (block.M.size()/3 - 1)), 0});
