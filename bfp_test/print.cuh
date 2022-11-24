@@ -37,11 +37,11 @@ void print_bfpBlock(bfpBlock block){
 
 void print_color(color c){
     cout << "\n\n---------- COLOR ------------------\n";
-    cout << "R: " << c[0] << "\t=> ";
+    cout << "R: ";
     printBit_float(c[0]);
-    cout << "G: " << c[1] << "\t=> ";
+    cout << "G: ";
     printBit_float(c[1]);
-    cout << "B: " << c[2] << "\t=> ";
+    cout << "B: ";
     printBit_float(c[2]);
 }
 
@@ -120,6 +120,7 @@ void printBit_uint(unsigned int num, int len, bool reverse){
 }
 
 void printBit_float(float f){
+    printf("%f\t=>\t", f);
     //cast to integer for bitwise operations
     unsigned int* temp = reinterpret_cast<unsigned int*>(&f); 
     unsigned int orginal_val = *temp;
@@ -187,7 +188,7 @@ void printBit_ulong(long long num, bool newLine){   //4bits grouped together
          printf("%c", out[i]);
     }
 
-    printf("\t(%lx)", num);
+    printf("\t(%llx)", num);
 
     if(newLine){
         printf("\n");

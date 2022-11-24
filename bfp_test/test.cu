@@ -2,6 +2,37 @@
 #include "bfp.cuh"
 
 vector<float> a = {2.2, 2.2};
+vector<color> c = {{2.25010704994, 2.25010704994, 2.25010704994}, {2.21364951134, 2.21364951134, 2.21364951134}, {2.2131459713, 2.2131459713, 2.2131459713}};
+// vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
+
+
+
+int main(void){
+    /* block formatting */
+    printf("---------Before block formatiing---------\n");
+    for(int i=0; i<c.size(); i++){
+        printBit_float(c[i][0]);
+        printBit_float(c[i][1]);
+        printBit_float(c[i][2]);
+    }
+    bfpBlock block = createColorBfpBlock(c);
+    print_bfpBlock(block);
+    printf("===============================================\n");
+
+    color res = mult_color_bfpBlock(block);
+    print_color(res);
+    printf("\nactual values:\n");
+    float r=1, g=1, b=1;
+    for(int i=0; i<c.size(); i++){
+        r *= c[i][0];
+        g *= c[i][1];
+        b *= c[i][2];
+    }
+    printBit_float(r);
+    printBit_float(g);
+    printBit_float(b);
+    return 0;
+}
 
 
 // void two_num_add(bfpBlock block){
@@ -51,17 +82,3 @@ vector<float> a = {2.2, 2.2};
 //     printf("\n");
 //     print_bfpNumFloat(res);
 // }
-
-int main(void){
-    /* block formatting */
-    printf("---------Before block formatiing---------\n");
-    for(int i=0; i<a.size(); i++){
-        printBit_float(a[i]);
-    }
-    bfpBlock block = createBfpBlock(a);
-    print_bfpBlock(block);
-    printf("===============================================\n");
-
-    // two_num_mult(block);
-    return 0;
-}

@@ -155,11 +155,11 @@ bfpNumFloat add_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
     }
 
     //4. normalization
-    if(res.mant & 0x01000000){  //when carry is 1
+    if(res.mant & 0x01000000){  //when carry is 1 (11.01 x 2^1 = 1.101 x 2^2)
         res.mant >>= 1;
         res.exp += 1;
     }
-    while((res.mant & 0x00800000) != 0x00800000){   //11.01 x 2^1 = 1.101 x 2^2
+    while((res.mant & 0x00800000) != 0x00800000){   //0.01101 x 2^3 = 1.101 x 2^1
         res.mant <<= 1;
         res.exp -= 1;
     }
@@ -189,10 +189,10 @@ bfpNumFloat mult_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
     }
 
     //3 rounding
-    unsigned short last_bit =  (unsigned short)((res_temp & 0x0000000001000000) >> 24);
-    unsigned short ground_bit = (unsigned short)((res_temp & 0x0000000000800000) >> 23);
-    unsigned short round_bit =  (unsigned short)((res_temp & 0x0000000000400000) >> 22);
-    unsigned short sticky_bits = (unsigned short)(res_temp & 0x00000000003fffff);
+    unsigned short last_bit =  (unsigned short)((res_temp & 0x0000000000800000) >> 23);
+    unsigned short ground_bit = (unsigned short)((res_temp & 0x0000000000400000) >> 22);
+    unsigned short round_bit =  (unsigned short)((res_temp & 0x0000000000200000) >> 21);
+    unsigned short sticky_bits = (unsigned short)(res_temp & 0x00000000001fffff);
     res_temp &= 0x0000ffffff000000; //truncate
     if(ground_bit == 1){
         if(round_bit == 0 && sticky_bits == 0){ //round to even
@@ -323,7 +323,12 @@ color add_color_bfpBlock(bfpBlock block){
 }
 
 color mult_color_bfpBlock(bfpBlock block){
-    vector<bfpNumFloat> res(3, {0, block.common_exp * block.M.size() / 3  - 127 * (block.M.size()/3 - 1), 0});
+    vector<bfpNumFloat> res(3, {0, (unsigned int)(block.common_exp * block.M.size() / 3  - 127 * (block.M.size()/3 - 1)), 0});
+
+    printf("\n====================\nexponents\n");
+    printBit_exp(res[0].exp, true);
+    printBit_exp(res[1].exp, true);
+    printBit_exp(res[2].exp, true);
 
     //1. assign sign
     for(int i=0; i<block.sign.size(); i+=3){
@@ -358,10 +363,10 @@ color mult_color_bfpBlock(bfpBlock block){
 
         //3 rounding
         for(int j=0; j<3; j++){
-            unsigned short last_bit =  (unsigned short)((res_temp[j] & 0x0000000001000000) >> 24);
-            unsigned short ground_bit = (unsigned short)((res_temp[j] & 0x0000000000800000) >> 23);
-            unsigned short round_bit =  (unsigned short)((res_temp[j] & 0x0000000000400000) >> 22);
-            unsigned short sticky_bits = (unsigned short)(res_temp[j] & 0x00000000003fffff);
+            unsigned short last_bit =  (unsigned short)((res_temp[j] & 0x0000000000800000) >> 22);
+            unsigned short ground_bit = (unsigned short)((res_temp[j] & 0x0000000000400000) >> 22);
+            unsigned short round_bit =  (unsigned short)((res_temp[j] & 0x0000000000200000) >> 21);
+            unsigned short sticky_bits = (unsigned short)(res_temp[j] & 0x00000000001fffff);
 
             if(ground_bit == 1){
                 if(round_bit == 0 && sticky_bits == 0){ //round to even
@@ -393,30 +398,40 @@ color mult_color_bfpBlock(bfpBlock block){
 
     //3. normalization
     for(int i=0; i<3; i++){
-        while((res_temp[i] & 0x800000000000) != 0x800000000000 && (res_temp[i] != 0)){
+        while((res_temp[i] & 0x800000) != 0x800000 && (res_temp[i] != 0)){
             res_temp[i] <<= 1;
             res[i].exp-=1;
         }  
     }
 
-
-    
-
+    printf("\n\n===================\nafter #1 normalization\n");
+    printBit_exp(res[0].exp, true);
+    printBit_exp(res[1].exp, true);
+    printBit_exp(res[2].exp, true);
+    printBit_ulong(res_temp[0], true);
+    printBit_ulong(res_temp[1], true);
+    printBit_ulong(res_temp[2], true);
     //5. normalization(carry)
     for(int i=0; i<3; i++){
-        res[i].mant = res_temp[i] >> 23;
-        int carry = res[i].mant >> 24;
+        int carry = (int)res_temp[i] >> 24;
         while(carry > 0){
             res[i].mant >>= 1;
             carry >>= 1;
             res[i].exp += 1;
         }
     }
+    printf("\n\n===================\nafter #2 normalization\n");
+    printBit_exp(res[0].exp, true);    
+    printBit_exp(res[1].exp, true);
+    printBit_exp(res[2].exp, true);
+    printBit_ulong(res_temp[0], true);
+    printBit_ulong(res_temp[1], true);
+    printBit_ulong(res_temp[2], true);
 
 
     //6. remove implicit 1
     for(int i=0; i<3; i++){
-        res[i].mant &= 0x007fffff;
+        res[i].mant = (int)res_temp[i] & 0x007fffff;
     }
 
      return bfpNumFloats_to_color(res);
