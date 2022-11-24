@@ -325,11 +325,6 @@ color add_color_bfpBlock(bfpBlock block){
 color mult_color_bfpBlock(bfpBlock block){
     vector<bfpNumFloat> res(3, {0, (unsigned int)(block.common_exp * block.M.size() / 3  - 127 * (block.M.size()/3 - 1)), 0});
 
-    printf("\n====================\nexponents\n");
-    printBit_exp(res[0].exp, true);
-    printBit_exp(res[1].exp, true);
-    printBit_exp(res[2].exp, true);
-
     //1. assign sign
     for(int i=0; i<block.sign.size(); i+=3){
         res[0].sign ^= block.sign[i];
@@ -339,27 +334,11 @@ color mult_color_bfpBlock(bfpBlock block){
 
     vector<unsigned long long> res_temp{(unsigned long long)block.M[0], (unsigned long long)block.M[1], (unsigned long long)block.M[2]};
 
-    // printf("\n=================\n# 0\n");
-    // printBit_ulong(res_temp[0], true);
-    // printBit_ulong(res_temp[1], true);
-    // printBit_ulong(res_temp[2], true);
-
     for(int i=3; i<block.M.size(); i+=3){
-
-        printf("\n\n======================\n# %d\n", i);
-        printBit_ulong(res_temp[0], true);
-        printBit_ulong(res_temp[1], true);
-        printBit_ulong(res_temp[2], true);
-
         //2. multiply mantissas
         res_temp[0] *= (unsigned long long) block.M[i];
         res_temp[1] *= (unsigned long long) block.M[i + 1];
         res_temp[2] *= (unsigned long long) block.M[i + 2];
- 
-        printf("\nmuliply\n");
-        printBit_ulong(res_temp[0], true);
-        printBit_ulong(res_temp[1], true);
-        printBit_ulong(res_temp[2], true);
 
         //3 rounding
         for(int j=0; j<3; j++){
@@ -380,19 +359,9 @@ color mult_color_bfpBlock(bfpBlock block){
             }
         }
 
-        printf("\nround\n");
-        printBit_ulong(res_temp[0], true);
-        printBit_ulong(res_temp[1], true);
-        printBit_ulong(res_temp[2], true);
-
         res_temp[0] >>= 23;
         res_temp[1] >>= 23;
         res_temp[2] >>= 23;
-
-        printf("\nshift\n");
-        printBit_ulong(res_temp[0], true);
-        printBit_ulong(res_temp[1], true);
-        printBit_ulong(res_temp[2], true);
     }
 
 
@@ -404,13 +373,6 @@ color mult_color_bfpBlock(bfpBlock block){
         }  
     }
 
-    printf("\n\n===================\nafter #1 normalization\n");
-    printBit_exp(res[0].exp, true);
-    printBit_exp(res[1].exp, true);
-    printBit_exp(res[2].exp, true);
-    printBit_ulong(res_temp[0], true);
-    printBit_ulong(res_temp[1], true);
-    printBit_ulong(res_temp[2], true);
     //5. normalization(carry)
     for(int i=0; i<3; i++){
         int carry = (int)res_temp[i] >> 24;
@@ -420,14 +382,6 @@ color mult_color_bfpBlock(bfpBlock block){
             res[i].exp += 1;
         }
     }
-    printf("\n\n===================\nafter #2 normalization\n");
-    printBit_exp(res[0].exp, true);    
-    printBit_exp(res[1].exp, true);
-    printBit_exp(res[2].exp, true);
-    printBit_ulong(res_temp[0], true);
-    printBit_ulong(res_temp[1], true);
-    printBit_ulong(res_temp[2], true);
-
 
     //6. remove implicit 1
     for(int i=0; i<3; i++){
@@ -436,50 +390,3 @@ color mult_color_bfpBlock(bfpBlock block){
 
      return bfpNumFloats_to_color(res);
 }
-
-
-// bfpNumFloat add_block_f(bfpBlock block){
-//     bfpNumFloat M[N];
-//     bfpNumFloat res = {0, block.common_exp, 0};
-
-//     // copy block's mantissa list to M[N]
-//     for(int i=0; i<N; i++){
-//         M[i] = block.M[i];
-//     }
-//     // 1. conversion to 2's complement for negative mantissas
-//     for(int i=0; i<N; i++){
-//         if(M[i].sign){
-//             M[i].mant = ~M[i].mant + 1;
-//         }
-//     }
-
-//     //2. add mantissas
-//     for(int i=0; i<N; i++){
-//         res.mant += M[i].mant;
-//     }
-
-//     //3. convert to sign magnitude if addition result is negative
-//     if((res.mant & 0x80000000) == 0x80000000){
-//         res.mant = ~res.mant + 1;
-//         res.sign = 1;
-//     }
-
-//     //4. normalization
-//     int carry = res.mant >> 6;
-//     while(carry > 0){
-//         res.mant >>= 1;
-//         carry >>= 1;
-//         res.exp += 1;
-//     }
-//     while((res.mant & 0x00800000) != 0x00800000){
-//         res.mant <<= 1;
-//         res.exp -= 1;
-//     }
-
-//     //5. remove implicit 1
-//     res.mant &= 0xff7fffff;
-
-//     return res;
-// }
-
-
