@@ -30,6 +30,8 @@
 \
 #include <iostream>
 #include <vector>
+#include <ctime>
+#include <cmath>
 
 #define MAX_SIZE 500
 
@@ -310,6 +312,10 @@ int main() {
     	ckCpu->clockPause();
     	ckCpu->clockPrint();
 
+		time_t t = time(NULL);
+		tm* tPtr = localtime(&t);
+		int timeStamp = (((tPtr->tm_year)+1900)/100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
+		char* img_path = str*
     	ppmSave("./images/img.ppm", pixel_array, image_width, image_height);
     	ppmSave("./images/bfp_img.ppm", bfp_pixel_array, image_width, image_height);
 
