@@ -65,8 +65,6 @@ color bfpNumFloats_to_color(vector<bfpNumFloat> v){
 
 
 
-
-
 /* block formatting */
 bfpBlock createBfpBlock(vector<float> X){
     bfpBlock block;
@@ -132,94 +130,6 @@ bfpBlock createColorBfpBlock(vector<color> colors){
 
 
 /* arithmetic operations for 2 numbers */
-bfpNumFloat add_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
-    bfpNumFloat res = {0};
-    res.sign = 0;
-    res.exp = block.common_exp;
-
-    //1. Conversion to 2’s complement for negative mantissas
-    if(a.sign){
-        a.mant = ~a.mant + 1;
-    }
-    if(b.sign){
-        b.mant = ~b.mant + 1;
-    }
-    
-    //2. add mantissas
-    res.mant = a.mant + b.mant;
-
-    //3. convert to signed magnitude if negative
-    if((res.mant & 0x80000000) == 0x80000000){    //if MSB is 1(sign = 1)
-        res.mant = ~res.mant + 1;
-        res.sign = 1;
-    }
-
-    //4. normalization
-    if(res.mant & 0x01000000){  //when carry is 1 (11.01 x 2^1 = 1.101 x 2^2)
-        res.mant >>= 1;
-        res.exp += 1;
-    }
-    while((res.mant & 0x00800000) != 0x00800000){   //0.01101 x 2^3 = 1.101 x 2^1
-        res.mant <<= 1;
-        res.exp -= 1;
-    }
-
-    //5. remove implicit 1
-    res.mant &= 0x007fffff;
-
-    return res;
-}
-
-bfpNumFloat sub_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
-    bfpNumFloat b_neg = b;
-    b_neg.sign = 1;
-    return add_f(block, a, b_neg);
-}
-
-bfpNumFloat mult_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
-    bfpNumFloat res = {(unsigned short)(a.sign^b.sign), block.common_exp + block.common_exp - 127, 0};
-
-    //1. multiply mantissas
-    unsigned long long res_temp = (unsigned long long)a.mant * (unsigned long long)b.mant;
-
-    //2. normalization
-    while((res_temp & 0x0000800000000000) != 0x0000800000000000 && (res_temp != 0)){
-        res_temp <<= 1;
-        res.exp-=1;
-    }
-
-    //3 rounding
-    unsigned short last_bit =  (unsigned short)((res_temp & 0x0000000000800000) >> 23);
-    unsigned short ground_bit = (unsigned short)((res_temp & 0x0000000000400000) >> 22);
-    unsigned short round_bit =  (unsigned short)((res_temp & 0x0000000000200000) >> 21);
-    unsigned short sticky_bits = (unsigned short)(res_temp & 0x00000000001fffff);
-    res_temp &= 0x0000ffffff000000; //truncate
-    if(ground_bit == 1){
-        if(round_bit == 0 && sticky_bits == 0){ //round to even
-            if(last_bit == 1){
-                res_temp += 0x000000000800000;
-            }
-        }
-        else{
-            res_temp += 0x000000000800000; //round up
-        }
-    }
-
-    //4. normalization(carry)
-    res.mant = res_temp >> 23;
-    int carry = res.mant >> 24;
-    while(carry > 0){
-        res.mant >>= 1;
-        carry >>= 1;
-        res.exp += 1;
-    }
-
-    //5. remove implicit 1
-    res.mant &= 0x007fffff;
-
-    return res;
-}
-
 bfpNumFloat div_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
     bfpNumFloat res = {(unsigned short)(a.sign^b.sign), 127, 0};
 
@@ -267,6 +177,107 @@ bfpNumFloat div_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
 }
 
 /* arithmetic operations for entire block */
+//float block
+float add_bfpBlock(bfpBlock block){
+    bfpNumFloat res = {0, block.common_exp, 0};
+
+    //1. converision to 2's complment for negative mantissas
+    for(int i=0; i<block.sign.size(); i++){
+        if(block.sign[i]){
+            block.M[i] = ~block.M[i] + 1;
+        }
+    }
+
+    //2. add mantissas
+    for(int i=0; i<block.M.size(); i++){       
+        res.mant += block.M[i];
+    }
+
+    //3. convert to  signed magnitude if negative
+    if((res.mant & 0x80000000) == 0x80000000){    //if MSB is 1(sign = 1)
+        res.mant = ~res.mant + 1;
+        res.sign = 1;
+    }
+
+    //4. normalization
+    while(res.mant & 0x01000000){ //when carry is 1
+        res.mant >>= 1;
+        res.exp += 1;
+    }
+    while((res.mant & 0x00800000) != 0x00800000){   //11.01 x 2^1 = 1.101 x 2^2
+        res.mant <<= 1;
+        res.exp -= 1;
+    }
+
+    res.mant &= 0x007fffff;
+
+    return bfpNumFloat_to_float(res);
+}
+
+float mult_bfpBlock(bfpBlock block){
+    bfpNumFloat res = {0, (unsigned int)(block.common_exp * block.M.size() - 127 * (block.M.size()- 1)), 0};
+
+    //1. assign sign
+    for(int i=0; i<block.sign.size(); i++){
+        res.sign ^= block.sign[i];
+    }
+
+    unsigned long long res_temp = (unsigned long long)block.M[0];
+
+    for(int i=1; i<block.M.size(); i++){
+        //2. multiply mantissas
+        res_temp *= (unsigned long long) block.M[i];
+
+        //3 rounding
+        unsigned short last_bit =  (unsigned short)((res_temp & 0x0000000000800000) >> 23);
+        unsigned short ground_bit = (unsigned short)((res_temp & 0x0000000000400000) >> 22);
+        unsigned short round_bit =  (unsigned short)((res_temp & 0x0000000000200000) >> 21);
+        unsigned short sticky_bits = (unsigned short)(res_temp & 0x00000000001fffff);
+
+        if(ground_bit == 1){
+            if(round_bit == 0 && sticky_bits == 0){ //round to even
+                if(last_bit == 1){
+                    res_temp += 0x000000000800000;
+                }
+            }
+            else{
+                res_temp += 0x000000000800000; //round up
+            }
+        }
+
+        res_temp >>= 23;
+    }
+
+
+    // 3. normalization
+    while((res_temp & 0x800000) != 0x800000 && (res_temp != 0)){
+        res_temp <<= 1;
+        res.exp-=1;
+    }  
+    // int temp = 0;
+    // while((res_temp & 0xffffffffff000000) > 0){
+    //     res_temp >>= 1;
+    //     temp++;
+    // } 
+    // res.exp-= (temp - 23) > 0? temp - 23 : 0;
+
+
+    //5. normalization(carry)
+    int carry = (int)res_temp >> 24;
+    while(carry > 0){
+        res_temp >>= 1;
+        carry >>= 1;
+        res.exp += 1;
+    }
+
+    //6. remove implicit 1
+    res.mant = (int)res_temp & 0x007fffff;
+
+    
+    return bfpNumFloat_to_float(res);
+}
+
+//color block
 color add_color_bfpBlock(bfpBlock block){
     vector<bfpNumFloat> res(3, {0,block.common_exp,0});
 
