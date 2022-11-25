@@ -45,6 +45,16 @@ void print_color(color c){
     printBit_float(c[2]);
 }
 
+/* print processes */
+void print_float_block_formatting(vector<float> f, bfpBlock block){
+    printf("=========================================================\n");
+    printf("---------Before block formatiing---------\n");
+    for(int i=0; i<f.size(); i++){
+        printBit_float(f[i]);
+    }
+    print_bfpBlock(block);
+    printf("=========================================================\n");
+}
 
 /* print bit representations of bfpStructs */
 void printBit_bfpNumFloat(bfpNumFloat b, bool nextLine){
@@ -120,7 +130,7 @@ void printBit_uint(unsigned int num, int len, bool reverse){
 }
 
 void printBit_float(float f){
-    printf("%f\t=>\t", f);
+    printf("%f   =>   ", f);
     //cast to integer for bitwise operations
     unsigned int* temp = reinterpret_cast<unsigned int*>(&f); 
     unsigned int orginal_val = *temp;
