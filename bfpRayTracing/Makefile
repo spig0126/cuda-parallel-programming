@@ -1,7 +1,7 @@
 CC=nvcc 
 
 RTTNW.out:  mkClockMeasure.h  mkCuda.h main.cu 
-	$(CC) -o RTTNW.out main.cu
+	$(CC) -o makefiles/RTTNW_400_5_5.out main.cu
 
 # test.out: mkClockMeasure.h  mkCuda.h test.cu
 # 	$(CC) -o test.out test.cu

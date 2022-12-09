@@ -262,9 +262,9 @@ int main() {
 
 	// Image
 	auto aspect_ratio = 16.0 / 9.0;
-	int image_width = 1920;  //400
-	int samples_per_pixel = 10;    
-	const int max_depth = 20;
+	int image_width = 400;  //400
+	int samples_per_pixel = 5;    
+	const int max_depth = 5;
 
 	
 	ckCpu->clockResume();
@@ -314,10 +314,11 @@ int main() {
 
 		time_t t = time(NULL);
 		tm* tPtr = localtime(&t);
-		int timeStamp = (((tPtr->tm_year)+1900)/100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
-		char* img_path = str*
-    	ppmSave("./images/img.ppm", pixel_array, image_width, image_height);
-    	ppmSave("./images/bfp_img.ppm", bfp_pixel_array, image_width, image_height);
+		int timeStamp = (((tPtr->tm_year)+1900)%100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
+		string img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
+		string bfp_img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_bfp_img.ppm";
+    	ppmSave(img_path.c_str(), pixel_array, image_width, image_height);
+    	ppmSave(bfp_img_path.c_str(), bfp_pixel_array, image_width, image_height);
 
     	return 0;
 }
