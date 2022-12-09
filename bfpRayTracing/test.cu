@@ -13,6 +13,7 @@ void test_mult_color_block(vector<color> c);
 
 int main(void){
     test_add_float_block(f);
+    test_mult_float_block(f);
     return 0;
 }
 
