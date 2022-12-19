@@ -231,26 +231,37 @@ void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_heigh
 	}
 
 	/* ----------------Add all sample colors------------------------- */
-	// // case 1) add all r g b floats in one block 
-	// bfpBlock block = createColorBfpBlock(ray_colors);	
-	// pixel_color = add_color_bfpBlock(block);
-	// r = pixel_color.x();
-	// g = pixel_color.y();
-	// b = pixel_color.z();
+	// case 1) add all r g b floats in one block 
+	for(int i=0; i<ray_colors.size(); i++){
+		printf("%f\t%f\t%f\n", ray_colors[i][0], ray_colors[i][1], ray_colors[i][2]);
+	}
+	bfpBlock block = createColorBfpBlock(ray_colors);	
+	pixel_color = add_color_bfpBlock(block);
+	r = pixel_color.x();
+	g = pixel_color.y();
+	b = pixel_color.z();
 
 	// case 2) put each r, g, b floats in respective blocks 
 	vector<float> ray_colors_r, ray_colors_g, ray_colors_b;
 	for(int i=0; i<ray_colors.size(); i++){
-		ray_colors_r.push_back(ray_colors[i].x());
-		ray_colors_g.push_back(ray_colors[i].y());
-		ray_colors_b.push_back(ray_colors[i].z());
+		ray_colors_r.push_back(ray_colors[i][0]);
+		ray_colors_g.push_back(ray_colors[i][1]);
+		ray_colors_b.push_back(ray_colors[i][2]);
+		// printf("%f\t%f\t%f\n", ray_colors_r[i], ray_colors_g[i], ray_colors_b[i]);
 	}
 	bfpBlock r_block = createBfpBlock(ray_colors_r);
 	bfpBlock g_block = createBfpBlock(ray_colors_g);
 	bfpBlock b_block = createBfpBlock(ray_colors_b);
-	r = add_bfpBlock(r_block);
-	g = add_bfpBlock(g_block);
-	b = add_bfpBlock(b_block);
+	printf("---------------- red------------------\n");
+	print_bfpBlock(r_block);
+	printf("---------------- green------------------\n");
+	print_bfpBlock(g_block);
+	printf("---------------- blue------------------\n");
+	print_bfpBlock(b_block);
+	printf("\n\n================================================\n\n");
+	// r = add_bfpBlock(r_block);
+	// g = add_bfpBlock(g_block);
+	// b = add_bfpBlock(b_block);
 
 	/* -------------------Antialiasing -----------------------*/
 	float scale = 1.0 / samples_per_pixel;
@@ -272,9 +283,9 @@ int main() {
 
 	// Image
 	auto aspect_ratio = 16.0 / 9.0;
-	int image_width = 1920;  //400
-	int samples_per_pixel = 100;    
-	const int max_depth = 50;
+	int image_width = 4;  //400
+	int samples_per_pixel = 3;    
+	const int max_depth = 3;
 
 	
 	ckCpu->clockResume();
@@ -324,9 +335,9 @@ int main() {
 	time_t t = time(NULL);
 	tm* tPtr = localtime(&t);
 	int timeStamp = (((tPtr->tm_year)+1900)%100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
-	string img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
+	// string img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
 	string bfp_img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_bfp_img.ppm";
-	ppmSave(img_path.c_str(), pixel_array, image_width, image_height);
+	// ppmSave(img_path.c_str(), pixel_array, image_width, image_height);
 	ppmSave(bfp_img_path.c_str(), bfp_pixel_array, image_width, image_height);
 
 	return 0;
