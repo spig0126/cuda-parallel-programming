@@ -1,11 +1,44 @@
 #include <stdio.h>
 #include "bfp.cuh"
 
-vector<float> a = {2.2, 2.2};
-vector<color> c = {{2.25010704994, 2.25010704994, 2.25010704994}, {2.21364951134, 2.21364951134, 2.21364951134}, {2.2131459713, 2.2131459713, 2.2131459713}};
+vector<float> f = {0.725133 , 0.729737, 0.671793};
+// vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.2434}, {6.2341, 2.2131459713, 3.840329}};
 // vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
 
 
+int main(void){
+    test_add_float_block(f);
+    // test_mult_float_block(f);
+
+    // float f1 =0.725133;
+    // bfpNumFloat bfp_f1 = float_to_bfpNumFloat(f1);
+    // printBit_sint(bfp_f1.mant, true);
+
+    // float f2 =0.729737 + f1;
+    // bfpNumFloat bfp_f2 = float_to_bfpNumFloat(f2);
+    // printBit_sint(bfp_f2.mant, true);
+    
+    // float f3 =0.671793 + f2;
+    // bfpNumFloat bfp_f3 = float_to_bfpNumFloat(f3);
+    // printBit_sint(bfp_f3.mant, true);
+    return 0;
+}
+
+void test_add_float_block(vector<float> f){
+    bfpBlock block = createBfpBlock(f);
+    print_float_block_formatting(f, block);
+
+    float bfp_res = add_bfpBlock(block);
+    float float_res = 0;
+    for(int i=0; i<f.size(); i++){
+        float_res += f[i];
+    }
+
+    printf("\nBFP result value:\n");
+    printBit_float(bfp_res);
+    printf("\nactual value:\n");
+    printBit_float(float_res);
+}
 
 int main(void){
     /* block formatting */
