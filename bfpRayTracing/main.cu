@@ -105,8 +105,6 @@ hittable_list random_scene() {
 	return world_bvh;
 }
 
-
-
 // 2. ray_color: calculates color of the current ray intersection point.
 color ray_color(const ray& r, const hittable& world, int depth) {
     
@@ -134,8 +132,6 @@ color ray_color(const ray& r, const hittable& world, int depth) {
     	auto t = 0.5 * (unit_direction.y() + 1.0);
     	return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
-
-
 
 color bfp_recur_get_ray_color(const ray& r, const hittable& world, int depth, vector<color>& ray_colors){
 	//return color(1, 1, 1) when there is color, and color(0,0,0) when max depth has been reached or error
@@ -217,33 +213,46 @@ void cal_pixel_color(int samples_per_pixel, int image_width, int image_height, i
 	// RT18 - PRINT PIXEL VALUES OF THE OUTPUT IMAGE:
 	//printf("  R:%d, G:%d, B:%d\n", array[idx], array[idx+1], array[idx+2]);
 }
+
 void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_height, int max_depth, const hittable& world, camera cam, unsigned char* array, int i, int j){
 	int idx = (j * image_width + i) * 3;
 	color pixel_color(0, 0, 0);
 	float r, g, b;
 	vector<color> ray_colors;
 
+	/* ----------------Trace sample colors ------------------------ */
 	for (int s = 0; s < samples_per_pixel; ++s) {
 		auto u = (i + random_float()) / (image_width - 1);
 		auto v = ((image_height-j-1) + random_float()) / (image_height - 1);
 
 		ray cur_ray = cam.get_ray(u, v);
 
-		ray_colors.push_back(bfp_ray_color(cur_ray, world, max_depth));
+		ray_colors.push_back(bfp_ray_color(cur_ray, world, max_depth));		//add all traced colors to ray_colors
 	}
 
-	bfpBlock block = createColorBfpBlock(ray_colors);
-	pixel_color = add_color_bfpBlock(block);
+	/* ----------------Add all sample colors------------------------- */
+	// // case 1) add all r g b floats in one block 
+	// bfpBlock block = createColorBfpBlock(ray_colors);	
+	// pixel_color = add_color_bfpBlock(block);
+	// r = pixel_color.x();
+	// g = pixel_color.y();
+	// b = pixel_color.z();
 
-	// for(int c=0; c< ray_colors.size(); c++){
-	// 	print_color(ray_colors[c]);
-	// }
+	// case 2) put each r, g, b floats in respective blocks 
+	vector<float> ray_colors_r, ray_colors_g, ray_colors_b;
+	for(int i=0; i<ray_colors.size(); i++){
+		ray_colors_r.push_back(ray_colors[i].x());
+		ray_colors_g.push_back(ray_colors[i].y());
+		ray_colors_b.push_back(ray_colors[i].z());
+	}
+	bfpBlock r_block = createBfpBlock(ray_colors_r);
+	bfpBlock g_block = createBfpBlock(ray_colors_g);
+	bfpBlock b_block = createBfpBlock(ray_colors_b);
+	r = add_bfpBlock(r_block);
+	g = add_bfpBlock(g_block);
+	b = add_bfpBlock(b_block);
 
-	r = pixel_color.x();
-	g = pixel_color.y();
-	b = pixel_color.z();
-
-	// Antialiasing
+	/* -------------------Antialiasing -----------------------*/
 	float scale = 1.0 / samples_per_pixel;
 	r = sqrt(scale * r);
 	g = sqrt(scale * g);
@@ -254,6 +263,7 @@ void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_heigh
 	array[idx+1] = (256 * clamp(g, 0.0, 0.999));
 	array[idx+2] = (256 * clamp(b, 0.0, 0.999));
 }
+
 // 3. main
 int main() {
 	// Measure the execution time.
@@ -301,25 +311,24 @@ int main() {
 
 	for (int j = 0; j < image_height; ++j) {
 	   	for (int i = 0; i < image_width; ++i) {
-				cal_pixel_color(samples_per_pixel, image_width, image_height, max_depth, world, cam, pixel_array, i, j);
+				// cal_pixel_color(samples_per_pixel, image_width, image_height, max_depth, world, cam, pixel_array, i, j);
 				bfp_cal_pixel_color(samples_per_pixel, image_width, image_height, max_depth, world, cam, bfp_pixel_array, i, j);
 		}
 	}
 		
-		// RT18 - PRINT PIXEL VALUES OF THE OUTPUT IMAGE: 
-		//printf("---------------------------------------------\n");
+	// RT18 - PRINT PIXEL VALUES OF THE OUTPUT IMAGE: 
+	//printf("---------------------------------------------\n");
+	ckCpu->clockPause();
+	ckCpu->clockPrint();
 
-    	ckCpu->clockPause();
-    	ckCpu->clockPrint();
+	time_t t = time(NULL);
+	tm* tPtr = localtime(&t);
+	int timeStamp = (((tPtr->tm_year)+1900)%100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
+	string img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
+	string bfp_img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_bfp_img.ppm";
+	ppmSave(img_path.c_str(), pixel_array, image_width, image_height);
+	ppmSave(bfp_img_path.c_str(), bfp_pixel_array, image_width, image_height);
 
-		time_t t = time(NULL);
-		tm* tPtr = localtime(&t);
-		int timeStamp = (((tPtr->tm_year)+1900)%100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
-		string img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
-		string bfp_img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_bfp_img.ppm";
-    	ppmSave(img_path.c_str(), pixel_array, image_width, image_height);
-    	ppmSave(bfp_img_path.c_str(), bfp_pixel_array, image_width, image_height);
-
-    	return 0;
+	return 0;
 }
 
