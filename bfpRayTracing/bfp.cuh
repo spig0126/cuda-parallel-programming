@@ -180,6 +180,7 @@ bfpNumFloat div_f(bfpBlock block, bfpNumFloat a, bfpNumFloat b){
 //float block
 float add_bfpBlock(bfpBlock block){
     bfpNumFloat res = {0, block.common_exp, 0};
+    long long int res_mant_temp = 0;
 
     //1. converision to 2's complment for negative mantissas
     for(int i=0; i<block.sign.size(); i++){
@@ -190,21 +191,37 @@ float add_bfpBlock(bfpBlock block){
 
     //2. add mantissas
     for(int i=0; i<block.M.size(); i++){       
-        res.mant += block.M[i];
+        res_mant_temp += (long long int)block.M[i];
+        // printf("add ");
+        // printBit_sint(block.M[i], false);
+        // printf(" => ");
+        // printBit_sint(res.mant, true);
+
+        /* option 1 */
+        // if((res.mant & 0xff000000) > 0){ //when carry is 1: 11.01 x 2^1 = 1.101 x 2^2
+        //     res.mant >>= 1;
+        //     res.exp += 1;
+        //     printf("\tCARRY! : ");
+        //     printBit_mant(res.mant, true);
+        // }
     }
 
     //3. convert to  signed magnitude if negative
-    if((res.mant & 0x80000000) == 0x80000000){    //if MSB is 1(sign = 1)
-        res.mant = ~res.mant + 1;
+    if((res_mant_temp & 0x8000000000000000) == 0x8000000000000000){    //if MSB is 1(sign = 1)
+        res_mant_temp = ~res_mant_temp + 1;
         res.sign = 1;
     }
 
     //4. normalization
-    while(res.mant & 0x01000000){ //when carry is 1
-        res.mant >>= 1;
+    /* option 2 */
+    while((res_mant_temp & 0xffffffffff000000) > 0){ //when carry is 1: 11.01 x 2^1 = 1.101 x 2^2
+        res_mant_temp >>= 1;
         res.exp += 1;
+        // printf("\tCARRY! : ");
+        // printBit_mant(res.mant, true);
     }
-    while((res.mant & 0x00800000) != 0x00800000){   //11.01 x 2^1 = 1.101 x 2^2
+    res.mant = (int)res_mant_temp;
+    while((res.mant & 0x00800000) != 0x00800000){   //0.101 x 2^2 = 1.01 x 2^1
         res.mant <<= 1;
         res.exp -= 1;
     }

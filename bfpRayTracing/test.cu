@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "bfp.cuh"
 
-vector<float> f = {2.25010704994, 2.250, 2.250107049, 2.213, 2.2136495, 1.2434, 6.2341, 2.2131459713, 3.840329};
+vector<float> f = {0.725133 , 0.729737, 0.671793};
 // vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.2434}, {6.2341, 2.2131459713, 3.840329}};
 // vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
 // vector<float> f = {2.25010704994, -3.11704993248};
@@ -13,7 +13,19 @@ void test_mult_color_block(vector<color> c);
 
 int main(void){
     test_add_float_block(f);
-    test_mult_float_block(f);
+    // test_mult_float_block(f);
+
+    // float f1 =0.725133;
+    // bfpNumFloat bfp_f1 = float_to_bfpNumFloat(f1);
+    // printBit_sint(bfp_f1.mant, true);
+
+    // float f2 =0.729737 + f1;
+    // bfpNumFloat bfp_f2 = float_to_bfpNumFloat(f2);
+    // printBit_sint(bfp_f2.mant, true);
+    
+    // float f3 =0.671793 + f2;
+    // bfpNumFloat bfp_f3 = float_to_bfpNumFloat(f3);
+    // printBit_sint(bfp_f3.mant, true);
     return 0;
 }
 
