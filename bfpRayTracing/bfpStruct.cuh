@@ -11,7 +11,8 @@
 #define DOUBLE_MANT_BITSIZE 52
 #define MAX_BITSIZE 100
 
-
+#define BFP_MANT_BITSIZE 16
+#define BFP_EXP_BITSIZE 8
 
 using namespace std;
 
@@ -19,17 +20,10 @@ typedef float fp;
 typedef cuComplex fpComplex;
 
 typedef struct {
-    unsigned short sign;   // 1 bit
-    unsigned int exp;   // 8 bit
-    int mant;   // 23 bit
-} bfpNumFloat;
-
-typedef struct{
-    float original;
-    unsigned short sign;   // 1 bit
-    short exp;   // 11 bit
-    long mant;   // 52 bit
-} bfpNumDouble;
+    unsigned short sign;  
+    unsigned int exp;  
+    int mant;  
+} bfpNum;
 
 typedef struct {
     unsigned int common_exp;

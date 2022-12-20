@@ -5,17 +5,21 @@
 #include "bfpStruct.cuh"
 #include "vec3.h"
 
-void print_bfpNumFloat(bfpNumFloat b);
+void print_bfpNum(bfpNum b);
 void print_bfpBlock(bfpBlock block);
-void printBit_bfpNumFloat(bfpNumFloat b, bool nextLine);
-void printBit_mant(int m, bool nextLine);
+void printBit_bfpNum(bfpNum b, bool nextLine);
+void printBit_bfpNum_exp(unsigned int e, bool nextLine);
+void printBit_bfpNum_mant(int m, bool nextLine);
+void printBit_float_mant(int m, bool newLine);
 void printBit_uint(unsigned int num, int len, bool reverse);
 void printBit_float(float f);
 void printBit_sint(int num, bool newLine);
 void printBit_ulong(long long num, bool newLine);
 
+using namespace std;
+
 /* print Structs*/
-void print_bfpNumFloat(bfpNumFloat b){
+void print_bfpNum(bfpNum b){
     printf("---------BFP component----------\n");
     printf("sign: %d\n", b.sign);
     printf("exp: %d\n", b.exp);
@@ -31,7 +35,7 @@ void print_bfpBlock(bfpBlock block){
         printf("%d: ", i);
         printBit_uint(block.sign[i], 1, false);
         printf("\t");
-        printBit_mant(block.M[i], true);
+        printBit_bfpNum_mant(block.M[i], true);
     }
 }
 
@@ -57,28 +61,53 @@ void print_float_block_formatting(vector<float> f, bfpBlock block){
 }
 
 /* print bit representations of bfpStructs */
-void printBit_bfpNumFloat(bfpNumFloat b, bool nextLine){
+void printBit_bfpNum(bfpNum b, bool nextLine){
     printBit_uint(b.sign, 1, false);
     printf(" ");
-    printBit_uint(b.exp, FLOAT_EXP_BITSIZE, false);
+    printBit_uint(b.exp, BFP_EXP_BITSIZE, false);
     printf(" ");
-    printBit_uint(b.mant, FLOAT_MANT_BITSIZE, false);
+    printBit_uint(b.mant, BFP_MANT_BITSIZE, false);
 
     if(nextLine){
         printf("\n");
     }
 }
 
-void printBit_exp(unsigned int e, bool nextLine){
+void printBit_bfpNum_exp(unsigned int e, bool nextLine){
     printf("%d => ", e);
-    printBit_uint(e, 8, false);
+    printBit_uint(e, BFP_EXP_BITSIZE, false);
     
     if(nextLine){
         printf("\n");
     }
 }
 
-void printBit_mant(int m, bool newLine){
+void printBit_bfpNum_mant(int m, bool nextLine){
+    int temp = m;
+    vector<string> out;
+    for(int i=0; i<BFP_MANT_BITSIZE + 1; i++, temp>>=1){
+        if(i%4 == 0){
+            out.insert(out.begin(), " ");
+        }
+        if(temp&1){
+            out.insert(out.begin(), "1");
+        }
+        else{
+            out.insert(out.begin(), "0");
+        }
+    }
+
+    for(const auto& bit: out){
+        cout << bit;
+    }
+
+    if(nextLine){
+        cout << "\n";
+    }
+
+}
+
+void printBit_float_mant(int m, bool newLine){
     int temp = m;
     char out[MAX_BITSIZE] = "";
     for(int i=0; i<24; i++, temp>>=1){

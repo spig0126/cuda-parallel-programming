@@ -1,25 +1,42 @@
 #include <stdio.h>
 #include "bfp.cuh"
 
+using namespace std;
+
 vector<float> f = {0.725133 , 0.729737, 0.671793};
-// vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.2434}, {6.2341, 2.2131459713, 3.840329}};
+vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.2434}, {6.2341, 2.2131459713, 3.840329}};
 // vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
 
 
 int main(void){
-    test_add_float_block(f);
+    test_mult_color_block(c);
+
+    //----------------------------------------------
+
+    // bfpNum b = float_to_bfpNum(0.725133);
+    // printBit_bfpNum(b, true);
+    // printBit_bfpNum_mant(b.mant, true);
+    // printBit_bfpNum_exp(b.exp, true);
+    // cout << BFP_MANT_BITSIZE <<endl;
+
+    // bfpBlock block = createBfpBlock(f);
+    // test_mult_float_block(f);
+
+    //----------------------------------------------
+
+    // test_add_float_block(f);
     // test_mult_float_block(f);
 
     // float f1 =0.725133;
-    // bfpNumFloat bfp_f1 = float_to_bfpNumFloat(f1);
+    // bfpNum bfp_f1 = float_to_bfpNum(f1);
     // printBit_sint(bfp_f1.mant, true);
 
     // float f2 =0.729737 + f1;
-    // bfpNumFloat bfp_f2 = float_to_bfpNumFloat(f2);
+    // bfpNum bfp_f2 = float_to_bfpNum(f2);
     // printBit_sint(bfp_f2.mant, true);
     
     // float f3 =0.671793 + f2;
-    // bfpNumFloat bfp_f3 = float_to_bfpNumFloat(f3);
+    // bfpNum bfp_f3 = float_to_bfpNum(f3);
     // printBit_sint(bfp_f3.mant, true);
     return 0;
 }
@@ -40,9 +57,34 @@ void test_add_float_block(vector<float> f){
     printBit_float(float_res);
 }
 
-int main(void){
-    /* block formatting */
-    printf("---------Before block formatiing---------\n");
+void test_mult_float_block(vector<float> f){
+    bfpBlock block = createBfpBlock(f);
+    print_float_block_formatting(f, block);
+
+    float bfp_res = mult_bfpBlock(block);
+    float float_res = 1;
+    for(int i=0; i<f.size(); i++){
+        float_res *= f[i];
+    }
+
+    printf("\nBFP result value:\n");
+    printBit_float(bfp_res);
+    printf("\nactual value:\n");
+    printBit_float(float_res);
+}
+
+void test_add_color_block(vector<color> colors){
+    vector<float> f;
+    for(const auto& color : colors){
+        f.push_back(color[0]);
+        f.push_back(color[1]);
+        f.push_back(color[2]);
+    }
+    bfpBlock block = createBfpBlock(f);
+    print_float_block_formatting(f, block);
+
+    color bfp_res = add_color_bfpBlock(block);
+    float r=0, g=0, b=0;
     for(int i=0; i<c.size(); i++){
         printBit_float(c[i][0]);
         printBit_float(c[i][1]);
@@ -52,9 +94,26 @@ int main(void){
     print_bfpBlock(block);
     printf("===============================================\n");
 
-    color res = mult_color_bfpBlock(block);
-    print_color(res);
-    printf("\nactual values:\n");
+    printf("\nBFP result value:\n");
+    print_color(bfp_res);
+    printf("\nactual value:\n");
+    printBit_float(r);
+    printBit_float(g);
+    printBit_float(b);
+    return;
+}
+
+void test_mult_color_block(vector<color> colors){
+    vector<float> f;
+    for(const auto& color : colors){
+        f.push_back(color[0]);
+        f.push_back(color[1]);
+        f.push_back(color[2]);
+    }
+    bfpBlock block = createBfpBlock(f);
+    print_float_block_formatting(f, block);
+
+    color bfp_res = add_color_bfpBlock(block);
     float r=1, g=1, b=1;
     for(int i=0; i<c.size(); i++){
         r *= c[i][0];
