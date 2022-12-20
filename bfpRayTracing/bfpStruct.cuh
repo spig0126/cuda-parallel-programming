@@ -11,6 +11,8 @@
 #define DOUBLE_MANT_BITSIZE 52
 #define MAX_BITSIZE 100
 
+
+
 using namespace std;
 
 typedef float fp;

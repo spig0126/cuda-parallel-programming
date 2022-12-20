@@ -37,8 +37,6 @@
 
 unsigned char *array;
 
-
-
 // 1. random_scene: Implements the 3D World.
 hittable_list random_scene() {
 	hittable_list world;
@@ -46,53 +44,52 @@ hittable_list random_scene() {
 	int count = 0;
     
 	auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
-    	world.add(make_shared<sphere>(++count, point3(0,-1000,0), 1000, ground_material));
+	world.add(make_shared<sphere>(++count, point3(0,-1000,0), 1000, ground_material));
 
-    	for (int a = -n; a < n; a++) {
+	for (int a = -n; a < n; a++) {
 		for (int b = -n; b < n; b++) {
-
 			// Generate constant scene primitives.
 			float choose_mat = (a * 11 + b)/121;
 
 			// Generate random scene primitives.
 			//auto choose_mat = random_float();
-	    		//point3 center(a + 0.9*random_float(), 0.2, b + 0.9*random_float());
-	    		point3 center(a, 0.2, b);
+			//point3 center(a + 0.9*random_float(), 0.2, b + 0.9*random_float());
+			point3 center(a, 0.2, b);
 
-	    		if ((center - point3(4, 0.2, 0)).length() > 0.9) {
-			    	shared_ptr<material> sphere_material;
+			if ((center - point3(4, 0.2, 0)).length() > 0.9) {
+				shared_ptr<material> sphere_material;
 
 				if (choose_mat < 0.8) {
-    		
 					// diffuse
-		    			auto albedo = color::random() * color::random();
-		    			sphere_material = make_shared<lambertian>(albedo);
+					auto albedo = color::random() * color::random();
+					sphere_material = make_shared<lambertian>(albedo);
 					auto center2 = center + vec3(0, random_float(0,.5), 0);
-		    			world.add(make_shared<sphere>(
-					   	++count, center, 0.2, sphere_material));
-				} else if (choose_mat < 0.95) {
-		    			// metal
-		    			auto albedo = color::random(0.5, 1);
-		    			auto fuzz = random_float(0, 0.5);
-		    			sphere_material = make_shared<metal>(albedo, fuzz);
-		    			world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
-				} else {
-		    			// glass
-		    			sphere_material = make_shared<dielectric>(1.5);
-		    			world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
+					world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
+				} 
+				else if (choose_mat < 0.95) {
+					// metal
+					auto albedo = color::random(0.5, 1);
+					auto fuzz = random_float(0, 0.5);
+					sphere_material = make_shared<metal>(albedo, fuzz);
+					world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
+				} 
+				else {
+					// glass
+					sphere_material = make_shared<dielectric>(1.5);
+					world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
 				}
-	    		}
+			}
 		}
-    	}
+	}
 
 	auto material1 = make_shared<dielectric>(1.5);
-    	world.add(make_shared<sphere>(++count, point3(0, 1, 0), 1.0, material1));
+	world.add(make_shared<sphere>(++count, point3(0, 1, 0), 1.0, material1));
 
-    	auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
-    	world.add(make_shared<sphere>(++count, point3(-4, 1, 0), 1.0, material2));
+	auto material2 = make_shared<lambertian>(color(0.4, 0.2, 0.1));
+	world.add(make_shared<sphere>(++count, point3(-4, 1, 0), 1.0, material2));
 
-    	auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
-    	world.add(make_shared<sphere>(++count, point3(4, 1, 0), 1.0, material3));
+	auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
+	world.add(make_shared<sphere>(++count, point3(4, 1, 0), 1.0, material3));
 
 	//	return world;
 	
@@ -318,11 +315,6 @@ int main() {
 
 
 	// Render
-	
-
-	// RT18
-	//PRINT PIXEL VALUES OF THE OUTPUT IMAGE: printf("------------------- IMAGE -------------------\n");
-
 	for (int j = 0; j < image_height; ++j) {
 	   	for (int i = 0; i < image_width; ++i) {
 				// cal_pixel_color(samples_per_pixel, image_width, image_height, max_depth, world, cam, pixel_array, i, j);
