@@ -232,14 +232,14 @@ void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_heigh
 
 	/* ----------------Add all sample colors------------------------- */
 	// case 1) add all r g b floats in one block 
-	for(int i=0; i<ray_colors.size(); i++){
-		printf("%f\t%f\t%f\n", ray_colors[i][0], ray_colors[i][1], ray_colors[i][2]);
-	}
-	bfpBlock block = createColorBfpBlock(ray_colors);	
-	pixel_color = add_color_bfpBlock(block);
-	r = pixel_color.x();
-	g = pixel_color.y();
-	b = pixel_color.z();
+	// for(int i=0; i<ray_colors.size(); i++){
+	// 	printf("%f\t%f\t%f\n", ray_colors[i][0], ray_colors[i][1], ray_colors[i][2]);
+	// }
+	// bfpBlock block = createColorBfpBlock(ray_colors);	
+	// pixel_color = add_color_bfpBlock(block);
+	// r = pixel_color.x();
+	// g = pixel_color.y();
+	// b = pixel_color.z();
 
 	// case 2) put each r, g, b floats in respective blocks 
 	vector<float> ray_colors_r, ray_colors_g, ray_colors_b;
@@ -252,16 +252,19 @@ void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_heigh
 	bfpBlock r_block = createBfpBlock(ray_colors_r);
 	bfpBlock g_block = createBfpBlock(ray_colors_g);
 	bfpBlock b_block = createBfpBlock(ray_colors_b);
-	printf("---------------- red------------------\n");
-	print_bfpBlock(r_block);
-	printf("---------------- green------------------\n");
-	print_bfpBlock(g_block);
-	printf("---------------- blue------------------\n");
-	print_bfpBlock(b_block);
-	printf("\n\n================================================\n\n");
-	// r = add_bfpBlock(r_block);
-	// g = add_bfpBlock(g_block);
-	// b = add_bfpBlock(b_block);
+	// printf("---------------- red------------------\n");
+	// for(int i=0; i<ray_colors_r.size(); i++){
+	// 	printf("%f\n", ray_colors_r[i]);
+	// }
+	// print_bfpBlock(r_block);
+	// printf("---------------- green------------------\n");
+	// print_bfpBlock(g_block);
+	// printf("---------------- blue------------------\n");
+	// print_bfpBlock(b_block);
+	// printf("\n\n================================================\n\n");
+	r = add_bfpBlock(r_block);
+	g = add_bfpBlock(g_block);
+	b = add_bfpBlock(b_block);
 
 	/* -------------------Antialiasing -----------------------*/
 	float scale = 1.0 / samples_per_pixel;
@@ -283,9 +286,9 @@ int main() {
 
 	// Image
 	auto aspect_ratio = 16.0 / 9.0;
-	int image_width = 4;  //400
+	int image_width = 1920;  //400
 	int samples_per_pixel = 3;    
-	const int max_depth = 3;
+	const int max_depth = 20;
 
 	
 	ckCpu->clockResume();
