@@ -330,8 +330,8 @@ int main() {
 	time_t t = time(NULL);
 	tm* tPtr = localtime(&t);
 	int timeStamp = (((tPtr->tm_year)+1900)%100) * 10000 + ((tPtr->tm_mon)+1) * 100 + (tPtr->tm_mday);
-	// string img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
-	string bfp_img_path = "./images/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_bfp_img.ppm";
+	// string img_path = "./images/" + to_string(BFP_EXP_BITSIZE) + "_" + to_string(BFP_MANT_BITSIZE) + "/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
+	string bfp_img_path = "./images/" + to_string(BFP_EXP_BITSIZE) + "_" + to_string(BFP_MANT_BITSIZE) + "/" + to_string(timeStamp) + "_" + to_string(image_width) +  "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_bfp_img.ppm";
 	// ppmSave(img_path.c_str(), pixel_array, image_width, image_height);
 	ppmSave(bfp_img_path.c_str(), bfp_pixel_array, image_width, image_height);
 
