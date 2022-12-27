@@ -9,7 +9,38 @@ vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.243
 
 
 int main(void){
-    test_mult_color_block(c);
+    test_div(f);
+
+    return 0;
+}
+
+void compareTwoNum_bfp_float(vector<float> f, bfpNum a, bfpNum b, bfpNum bfp_res, float float_res){
+    printf("=========BFP=============\n");
+    printf("%f   =>   ", bfpNum_to_float(a));
+    printBit_bfpNum(a, true);
+    printf("%f   =>   ", bfpNum_to_float(b));
+    printBit_bfpNum(b, true);
+    printf("=========FLOAT=============\n");
+    printBit_float(f[0]);
+    printBit_float(f[1]);
+
+    printf("\nBFP result value:\n");
+    printf("%f   =>   ", bfpNum_to_float(bfp_res));
+    printBit_bfpNum(bfp_res, true);
+    printf("actual value:\n");
+    printBit_float(float_res);
+}
+
+//--------------------two number arithmetic-----------------------------------
+void test_add(vector<float> f){
+    bfpNum a = float_to_bfpNum(f[0]);
+    bfpNum b = float_to_bfpNum(f[1]);
+
+    bfpNum bfp_res = add(a, b);
+    float float_res = f[0] + f[1];
+
+    compareTwoNum_bfp_float(f, a, b, bfp_res, float_res);
+}
 
     //----------------------------------------------
 
