@@ -179,21 +179,12 @@ bfpNum add(bfpNum a, bfpNum b){
 
     //2. add mantissas
     res_mant_temp = (unsigned long long)a.mant + (unsigned long long)b.mant;
-    
-    //---------------------------------------------------------
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
 
     //3. convert to signed magnitude if negative
     if(res_mant_temp & 0x8000000000000000){
         res_mant_temp = ~res_mant_temp + 1;
         res.sign = 1;
     }
-
-    //---------------------------------------------------------
-    cout << "\nconvert to signed magnitude if negative" << endl;
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
 
     res.mant = (int)res_mant_temp;
 
@@ -205,23 +196,12 @@ bfpNum add(bfpNum a, bfpNum b){
         carry >>= 1;
     }
 
-    //---------------------------------------------------------
-    cout << "\nnormalization(carry)" << endl;
-    printBit_ulong(res.mant, true);
-    //---------------------------------------------------------
-
     //5. noramlziation(implicit 1)
     int implicit_1 = (int)pow(2, BFP_MANT_BITSIZE);
     while(!(res.mant & implicit_1)){   //if there is no implicit 1
         res.mant <<= 1;
         res.exp -= 1;
     }
-
-    //---------------------------------------------------------
-    cout << "\nnormalization(implicit 1)" << endl;
-    printBit_ulong(res.mant, true);
-    cout << "\n\n--------------------------------------------------------------------------------\n\n";
-    //---------------------------------------------------------
 
     return res;
 }
@@ -237,10 +217,6 @@ bfpNum mult(bfpNum a, bfpNum b){
 
     //1. multiply
     res_mant_temp = (unsigned long long)a.mant * (unsigned long long)b.mant;
-
-    //---------------------------------------------------------
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
 
     //2. rounding to nearest even
     int t = (int)pow(2, BFP_MANT_BITSIZE);
@@ -264,17 +240,7 @@ bfpNum mult(bfpNum a, bfpNum b){
         }
     }
 
-    //---------------------------------------------------------
-    cout << "\nrounding" << endl;
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
-
     res.mant = (int)(res_mant_temp >> BFP_MANT_BITSIZE);    //save result in res.mant
-
-    //---------------------------------------------------------
-    cout << "\nshifting" << endl;
-    printBit_ulong(res_mant_temp >> BFP_MANT_BITSIZE, true);
-    //---------------------------------------------------------
 
     //3. normalization(carry)
     int carry = res.mant >> (BFP_MANT_BITSIZE + 1);
@@ -284,23 +250,12 @@ bfpNum mult(bfpNum a, bfpNum b){
         carry >>= 1;
     }
 
-    //---------------------------------------------------------
-    cout << "\nnormalization(carry)" << endl;
-    printBit_ulong(res.mant, true);
-    //---------------------------------------------------------
-
     //4. normalization(implicit 1)
     int implicit_1 = (int)pow(2, BFP_MANT_BITSIZE);
     while(!(res.mant & implicit_1)){   //if there is no implicit 1
         res.mant <<= 1;
         res.exp -= 1;
     }
-
-    //---------------------------------------------------------
-    cout << "\nnormalization(implicit 1)" << endl;
-    printBit_ulong(res.mant, true);
-    cout << "\n\n--------------------------------------------------------------------------------\n\n";
-    //---------------------------------------------------------
 
     return res;
 }
@@ -313,24 +268,12 @@ bfpNum div(bfpNum a, bfpNum b){
     unsigned long long b_temp = (unsigned long long)b.mant;
     unsigned long long res_mant_temp = (unsigned long long)a_temp / b_temp;
 
-    //---------------------------------------------------------
-    printBit_ulong(a_temp, true);
-    printBit_ulong(b_temp, true);
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
-
     //2. normalization(implicit 1)
     unsigned long long implicit_1 = (unsigned long long)pow(2, (64 - 1 - BFP_MANT_BITSIZE));
     while(!(res_mant_temp & implicit_1)){
         res_mant_temp <<= 1;
         res.exp -= 1;
     }
-
-    //---------------------------------------------------------
-    cout << "\nnormalization(implicit 1)" << endl;
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
-
 
     //3. rounding to nearest even
     int lsb_zero_cnt = 64 - 1 - BFP_MANT_BITSIZE - BFP_MANT_BITSIZE;
@@ -355,17 +298,7 @@ bfpNum div(bfpNum a, bfpNum b){
         }
     }
 
-    //---------------------------------------------------------
-    cout << "\nrounding" << endl;
-    printBit_ulong(res_mant_temp, true);
-    //---------------------------------------------------------
-
     res.mant = (int)(res_mant_temp >> lsb_zero_cnt);    //save result in res.mant
-
-    //---------------------------------------------------------
-    cout << "\nshifting" << endl;
-    printBit_ulong(res_mant_temp >> lsb_zero_cnt, true);
-    //---------------------------------------------------------
 
     //4. normalization(carry)
     int carry = res.mant >> (BFP_MANT_BITSIZE + 1);
@@ -374,12 +307,6 @@ bfpNum div(bfpNum a, bfpNum b){
         res.exp += 1;
         carry >>=1;
     }
-
-    //---------------------------------------------------------
-    cout << "\nnormalization(carry)" << endl;
-    printBit_ulong(res.mant, true);
-    cout << "\n\n--------------------------------------------------------------------------------\n\n";
-    //---------------------------------------------------------
 
     return res;
 }

@@ -22,7 +22,7 @@ void test_add_color_block(vector<color> c);
 void test_mult_color_block(vector<color> c);
 
 int main(void){
-    test_add(f);
+    test_div(f);
 
     return 0;
 }
