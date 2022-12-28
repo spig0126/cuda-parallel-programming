@@ -83,6 +83,7 @@ bfpNum int_to_bfpNum(int i){
 }
 
 
+
 vector<bfpNum> color_to_bfpNum(color c){
     vector<bfpNum> c_formatted;
 

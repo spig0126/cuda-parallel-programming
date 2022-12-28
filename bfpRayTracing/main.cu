@@ -212,15 +212,22 @@ void cal_pixel_color(int samples_per_pixel, int image_width, int image_height, i
 }
 
 void bfp_cal_pixel_color(int samples_per_pixel, int image_width, int image_height, int max_depth, const hittable& world, camera cam, unsigned char* array, int i, int j){
-	int idx = (j * image_width + i) * 3;
+	bfpNum _image_height = int_to_bfpNum(image_height);
+	bfpNum _image_width = int_to_bfpNum(image_width);
+	bfpNum _i = int_to_bfpNum(i);
+	bfpNum _j = int_to_bfpNum(j);
+
+	bfpNum idx = (_j * _image_width + _i) * int_to_bfpNum(3);
 	color pixel_color(0, 0, 0);
 	float r, g, b;
 	vector<color> ray_colors;
 
 	/* ----------------Trace sample colors ------------------------ */
 	for (int s = 0; s < samples_per_pixel; ++s) {
-		auto u = (i + random_float()) / (image_width - 1);
-		auto v = ((image_height-j-1) + random_float()) / (image_height - 1);
+		bfpNum u = (_i + random_num()) / (_image_width - int_to_bfpNum(1));
+		bfpNum v = ((_image_height - _j - int_to_bfpNum(1)) + random_num()) / (_image_height - int_to_bfpNum(1));
+		// auto u = (i + random_float()) / (image_width - 1);
+		// auto v = ((image_height-j-1) + random_float()) / (image_height - 1);
 
 		ray cur_ray = cam.get_ray(u, v);
 

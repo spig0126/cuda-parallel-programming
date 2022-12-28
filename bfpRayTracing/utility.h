@@ -62,15 +62,19 @@ inline int random_int(int min, int max) {
 }
 
 inline bfpNum random_num(){
-	return div(int_to_bfpNum(rand()), int_to_bfpNum(RAND_MAX + 1));
+	return int_to_bfpNum(rand()) / int_to_bfpNum(RAND_MAX + 1);
 }
 
 inline bfpNum random_num(bfpNum min, bfpNum max){
-	return add(min, mult(sub(max, min), random_num()));
+	return min + (max - min) * random_num();
 }
 
 inline bfpNum clamp_num(bfpNum x, bfpNum min, bfpNum max){
-
+	if(x < min)
+		return min;
+	if(x > max)
+		return max;
+	return x;
 }
 
 //for test.cu compiling
