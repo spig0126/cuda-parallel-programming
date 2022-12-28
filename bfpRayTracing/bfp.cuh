@@ -318,6 +318,11 @@ bfpNum div(bfpNum a, bfpNum b){
     return res;
 }
 
+bfpNum abs(bfpNum a){
+    a.sign = 0;
+    return a;
+}
+
 bool compare(bfpNum a, bfpNum b){
     /* align exponents */
     if(a.exp >= b.exp){
