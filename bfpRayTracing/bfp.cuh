@@ -1,5 +1,6 @@
 #include <float.h>
 #include <math.h>
+#include <iostream>
 
 #include "bfpStruct.cuh"
 #include "print.cuh"
@@ -314,6 +315,52 @@ bfpNum div(bfpNum a, bfpNum b){
     }
 
     return res;
+}
+
+bool compare(bfpNum a, bfpNum b){
+    /* align exponents */
+    if(a.exp >= b.exp){
+        b.mant >>= (a.exp - b.exp);
+    }
+    else{
+        a.mant >>= (b.exp - a.exp);
+    }
+
+    /* a > b */
+    if(a.sign ^ b.sign){    //둘 중 하나만 음수인 경우
+        if(a.sign) return false;    //a가 음수인 경우 
+        else return true;    //b가 음수인 경우
+    }
+    else if (a.sign && b.sign){   //둘 다 음수인 경우
+        return a.mant < b.mant;
+    } 
+    else{   //둘 다 양수인 경우
+        return a.mant > b.mant;
+    }   
+}
+
+inline bfpNum operator+(bfpNum a, bfpNum b){
+    return add(a, b);
+}
+
+inline bfpNum operator-(bfpNum a, bfpNum b){
+    return sub(a, b);
+}
+
+inline bfpNum operator*(bfpNum a, bfpNum b){
+    return mult(a, b);
+}
+
+inline bfpNum operator/(bfpNum a, bfpNum b){
+    return div(a, b);
+}
+
+inline bool operator>(bfpNum a, bfpNum b){
+    return compare(a, b);
+}
+
+inline bool operator<(bfpNum a, bfpNum b){
+    return compare(b, a);
 }
 
 /* arithmetic operations for entire block */

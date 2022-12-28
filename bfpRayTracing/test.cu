@@ -3,13 +3,27 @@
 
 using namespace std;
 
-vector<float> f = {0.725133 , 0.729737, 0.671793};
+// vector<float> f = {0.725133 , 0.729737, 0.671793};
+// vector<float> f = {0.725133 , 0.729737};
 vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.2434}, {6.2341, 2.2131459713, 3.840329}};
 // vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
+vector<float> f = {3.11704993248, 2.25010704994, -3.11704993248};
 
+void compareTwoNum_bfp_float(vector<float> f);
+
+void test_add(vector<float> f);
+void test_sub(vector<float> f);
+void test_mult(vector<float> f);
+void test_div(vector<float> f);
+void test_compare(vector<float> f);
+
+void test_add_float_block(vector<float> f);
+void test_mult_float_block(vector<float> f);
+void test_add_color_block(vector<color> c);
+void test_mult_color_block(vector<color> c);
 
 int main(void){
-    test_div(f);
+    test_compare(f);
 
     return 0;
 }
@@ -36,42 +50,55 @@ void test_add(vector<float> f){
     bfpNum a = float_to_bfpNum(f[0]);
     bfpNum b = float_to_bfpNum(f[1]);
 
-    bfpNum bfp_res = add(a, b);
+    bfpNum bfp_res = a + b;
     float float_res = f[0] + f[1];
 
     compareTwoNum_bfp_float(f, a, b, bfp_res, float_res);
 }
 
-    //----------------------------------------------
+void test_sub(vector<float> f){
+    bfpNum a = float_to_bfpNum(f[0]);
+    bfpNum b = float_to_bfpNum(f[1]);
 
-    // bfpNum b = float_to_bfpNum(0.725133);
-    // printBit_bfpNum(b, true);
-    // printBit_bfpNum_mant(b.mant, true);
-    // printBit_bfpNum_exp(b.exp, true);
-    // cout << BFP_MANT_BITSIZE <<endl;
+    bfpNum bfp_res = sub(a, b);
+    float float_res = f[0] - f[1];
 
-    // bfpBlock block = createBfpBlock(f);
-    // test_mult_float_block(f);
-
-    //----------------------------------------------
-
-    // test_add_float_block(f);
-    // test_mult_float_block(f);
-
-    // float f1 =0.725133;
-    // bfpNum bfp_f1 = float_to_bfpNum(f1);
-    // printBit_sint(bfp_f1.mant, true);
-
-    // float f2 =0.729737 + f1;
-    // bfpNum bfp_f2 = float_to_bfpNum(f2);
-    // printBit_sint(bfp_f2.mant, true);
-    
-    // float f3 =0.671793 + f2;
-    // bfpNum bfp_f3 = float_to_bfpNum(f3);
-    // printBit_sint(bfp_f3.mant, true);
-    return 0;
+    compareTwoNum_bfp_float(f, a, b, bfp_res, float_res);
 }
 
+void test_mult(vector<float> f){
+    bfpNum a = float_to_bfpNum(f[0]);
+    bfpNum b = float_to_bfpNum(f[1]);
+
+    bfpNum bfp_res = mult(a, b);
+    float float_res = f[0] * f[1];
+
+    compareTwoNum_bfp_float(f, a, b, bfp_res, float_res);
+}
+
+void test_div(vector<float> f){
+    bfpNum a = float_to_bfpNum(f[0]);
+    bfpNum b = float_to_bfpNum(f[1]);
+
+    bfpNum bfp_res = div(a, b);
+    float float_res = f[0] / f[1];
+
+    compareTwoNum_bfp_float(f, a, b, bfp_res, float_res);
+}
+
+void test_compare(vector<float> f){
+    bfpNum a = float_to_bfpNum(f[0]);
+    bfpNum b = float_to_bfpNum(f[1]);
+
+    bool bfp_res = a > b;
+    bool float_res = f[0] > f[1];
+
+    cout << "BFP result value: " << bfp_res << endl;
+    cout << "actual result value: " << float_res << endl;
+}
+
+
+//--------------------BFP block arithmetic-----------------------------------
 void test_add_float_block(vector<float> f){
     bfpBlock block = createBfpBlock(f);
     print_float_block_formatting(f, block);
@@ -104,6 +131,7 @@ void test_mult_float_block(vector<float> f){
     printBit_float(float_res);
 }
 
+//--------------------BFP color block arithmetic-----------------------------------
 void test_add_color_block(vector<color> colors){
     vector<float> f;
     for(const auto& color : colors){
@@ -117,13 +145,10 @@ void test_add_color_block(vector<color> colors){
     color bfp_res = add_color_bfpBlock(block);
     float r=0, g=0, b=0;
     for(int i=0; i<c.size(); i++){
-        printBit_float(c[i][0]);
-        printBit_float(c[i][1]);
-        printBit_float(c[i][2]);
+        r += c[i][0];
+        g += c[i][1];
+        b += c[i][2];
     }
-    bfpBlock block = createColorBfpBlock(c);
-    print_bfpBlock(block);
-    printf("===============================================\n");
 
     printf("\nBFP result value:\n");
     print_color(bfp_res);
@@ -151,57 +176,12 @@ void test_mult_color_block(vector<color> colors){
         g *= c[i][1];
         b *= c[i][2];
     }
+
+    printf("\nBFP result value:\n");
+    print_color(bfp_res);
+    printf("\nactual value:\n");
     printBit_float(r);
     printBit_float(g);
     printBit_float(b);
-    return 0;
+    return;
 }
-
-
-// void two_num_add(bfpBlock block){
-//     bfpNumFloat res = add_f(block, block.M[0], block.M[1]);
-//     printBit_bfpNumFloat(res, true);
-//     print_bfpNumFloat(res);
-//     float res_float = bfpNumFloat_to_float(res);
-//     printf("%f\n", res_float);
-// }
-
-// void block_add(bfpBlock block){
-//     bfpNumFloat res = add_block_f(block);
-//     float res_float = bfpNumFloat_to_float(res);
-//     printf("\n\n=====================RESULT============================\nbit representation: ");
-//     printBit_bfpNumFloat(res, true);
-//     printf("\n");
-//     print_bfpNumFloat(res);
-//     printf("\nvalue = %f\n", res_float);
-// }
-
-
-// void two_num_mult(bfpBlock block){
-//     bfpNumFloat res = mult_f(block, block.M[0], block.M[1]);
-//     float res_float = bfpNumFloat_to_float(res);
-//     printf("\n\n=====================RESULT============================\n");
-//     printf("value = %.9g\n", res_float);
-//     printf("bit representation: ");
-//     printBit_bfpNumFloat(res, true);
-//     printf("\n");
-//     printf("<FP multiplication>\nvalue = %.9g\nbit representation: ", a[0] * a[1]);
-//     printBit_float(a[0] * a[1]);
-//     printf("\n");
-//     print_bfpNumFloat(res);
-
-// }
-
-// void two_num_div(bfpBlock block){
-//     bfpNumFloat res = div_f(block, block.M[0], block.M[1]);
-//     float res_float = bfpNumFloat_to_float(res);
-//     printf("\n\n=====================RESULT============================\n");
-//     printf("value = %.9g\n", res_float);
-//     printf("bit representation: ");
-//     printBit_bfpNumFloat(res, true);
-//     printf("\n");
-//     printf("<FP division>\nvalue = %.9g\nbit representation: ", a[0] / a[1]);
-//     printBit_float(a[0] / a[1]);
-//     printf("\n");
-//     print_bfpNumFloat(res);
-// }
