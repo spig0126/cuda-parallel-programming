@@ -18,6 +18,9 @@
 #include <memory>
 #include <cstdlib>
 
+#include "bfpStruct.cuh"
+#include "bfp.cuh"
+
 // Usings
 
 using std::shared_ptr;
@@ -34,7 +37,7 @@ const float pi = 3.1415926535897932385;
 // Utility Functions
 
 inline float degrees_to_radians(float degrees) {
-       	return degrees * pi / 180.0;
+	return degrees * pi / 180.0;
 }
 
 inline float random_float() {
@@ -48,14 +51,26 @@ inline float random_float(float min, float max) {
 }
 
 inline float clamp(float x, float min, float max) {
-    	if (x < min) return min;
+	if (x < min) return min;
 	if (x > max) return max;
     	return x;
 }
 
 inline int random_int(int min, int max) {
-     	// Returns a random integer in [min,max].
-    	return static_cast<int>(random_float(min, max+1));
+	// Returns a random integer in [min,max].
+	return static_cast<int>(random_float(min, max+1));
+}
+
+inline bfpNum random_num(){
+	return div(int_to_bfpNum(rand()), int_to_bfpNum(RAND_MAX + 1));
+}
+
+inline bfpNum random_num(bfpNum min, bfpNum max){
+	return add(min, mult(sub(max, min), random_num()));
+}
+
+inline bfpNum clamp_num(bfpNum x, bfpNum min, bfpNum max){
+
 }
 
 //for test.cu compiling

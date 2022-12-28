@@ -37,7 +37,7 @@ float bfpNum_to_float(bfpNum b){
         mant <<= (FLOAT_MANT_BITSIZE - BFP_MANT_BITSIZE);
     }
     
-    mant ^= 0x800000;   //remove implicit 1
+    mant &= FLOAT_MANT_EXTRACT_BITS;   //remove implicit 1
 
     t ^= sign;
     t <<= FLOAT_EXP_BITSIZE;
@@ -76,6 +76,11 @@ bfpNum float_to_bfpNum(float f){
 
     return res;
 }
+
+bfpNum int_to_bfpNum(int i){
+    return float_to_bfpNum((float)i);
+}
+
 
 vector<bfpNum> color_to_bfpNum(color c){
     vector<bfpNum> c_formatted;
@@ -158,8 +163,19 @@ bfpBlock createColorBfpBlock(vector<color> colors){
 
 
 /* arithmetic operations for 2 numbers */
-bfpNum div_f(bfpBlock block, bfpNum a, bfpNum b){
-    bfpNum res = {(unsigned short)(a.sign^b.sign), 127, 0};
+bfpNum add(bfpNum a, bfpNum b){
+    bfpNum res = {0, 0, 0};
+    unsigned long long res_mant_temp = 0;
+
+    /* decide exponent */
+    if(a.exp >= b.exp){
+        res.exp = a.exp;
+        b.mant >>= (a.exp - b.exp);
+    }
+    else{
+        res.exp = b.exp;
+        a.mant >>= (b.exp - a.exp);
+    }
 
     /* cal mantissa */
     //1. conversion to 2's complement for negative mantissas
@@ -220,12 +236,12 @@ bfpNum mult(bfpNum a, bfpNum b){
     int lsb = (int)pow(2, BFP_MANT_BITSIZE); 
     if(ground_bit){
         if(round_bit == 0 && sticky_bits == 0){ //round to even
-            if(last_bit == 1){
-                res_temp += 0x0000000000020000;
+            if(last_bit){
+                res_mant_temp += lsb;
             }
         }
         else{
-            res_temp += 0x0000000000020000; //round up
+            res_mant_temp += lsb; //round up
         }
     }
 
@@ -235,6 +251,7 @@ bfpNum mult(bfpNum a, bfpNum b){
     int carry = res.mant >> (BFP_MANT_BITSIZE + 1);
     while(carry){   //if there is carry
         res.mant >>= 1;
+        res.exp += 1;
         carry >>= 1;
     }
 
@@ -293,6 +310,7 @@ bfpNum div(bfpNum a, bfpNum b){
     while(carry){
         res.mant >>= 1;
         res.exp += 1;
+        carry >>=1;
     }
 
     return res;
@@ -349,6 +367,9 @@ float add_bfpBlock(bfpBlock block){
         res.mant <<= 1;
         res.exp -= 1;
     }
+
+    //5. remove implicit 1
+    res.mant = (int)res_mant_temp & BFP_MANT_EXTRACT_BITS;
 
     return bfpNum_to_float(res);
 }
@@ -409,11 +430,11 @@ float mult_bfpBlock(bfpBlock block){
 
 
     //6. remove implicit 1
-    res.mant = (int)res_mant_temp & 0x007fffff;
-
+    res.mant = (int)res_mant_temp & BFP_MANT_EXTRACT_BITS;
     
     return bfpNum_to_float(res);
 }
+
 
 //color block
 color add_color_bfpBlock(bfpBlock block){
@@ -468,7 +489,6 @@ color add_color_bfpBlock(bfpBlock block){
     // print_bfpNum(res[2]);
     return bfpNums_to_color(res);
 }
-
 
 color mult_color_bfpBlock(bfpBlock block){
     vector<bfpNum> res(3, {0, (unsigned int)(block.common_exp * block.M.size() / 3  - ((int)pow(2, BFP_EXP_BITSIZE - 1) - 1) * (block.M.size()/3 - 1)), 0});

@@ -1,6 +1,4 @@
 #pragma once
-#include <cufft.h>  
-#include <cuComplex.h>
 #include <vector>
 
 
@@ -17,7 +15,6 @@
 using namespace std;
 
 typedef float fp;
-typedef cuComplex fpComplex;
 
 typedef struct {
     unsigned short sign;  
