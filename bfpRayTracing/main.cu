@@ -92,7 +92,6 @@ hittable_list random_scene() {
     	auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
     	world.add(make_shared<sphere>(++count, point3(4, 1, 0), 1.0, material3));
 
-	//	return world;
 	
 	// Constructing BVH
 	hittable_list world_bvh;
@@ -102,8 +101,6 @@ hittable_list random_scene() {
 
 	return world_bvh;
 }
-
-
 
 // 2. ray_color: calculates color of the current ray intersection point.
 color ray_color(const ray& r, const hittable& world, int depth) {
@@ -288,10 +285,6 @@ int main() {
 
 	ckCpu->clockReset();
 	ckCpu->clockResume();
-
-
-	// Render
-	
 
 	// RT18
 	//PRINT PIXEL VALUES OF THE OUTPUT IMAGE: printf("------------------- IMAGE -------------------\n");
