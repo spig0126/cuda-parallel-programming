@@ -7,7 +7,7 @@ using namespace std;
 // vector<float> f = {0.725133 , 0.729737};
 vector<color> c = {{2.25010704994, 2.250, 2.250107049}, {2.213, 2.2136495, 1.2434}, {6.2341, 2.2131459713, 3.840329}};
 // vector<color> c = {{2, 2, 2}, {-2, -2, 2}, {3, 3, 3}};
-vector<float> f = {3.11704993248, 2.25010704994, -3.11704993248};
+vector<float> f = {-3.11704993248, 2.25010704994, -3.11704993248};
 
 void compareTwoNum_bfp_float(vector<float> f);
 
@@ -23,8 +23,8 @@ void test_add_color_block(vector<color> c);
 void test_mult_color_block(vector<color> c);
 
 int main(void){
-    test_compare(f);
 
+    cout << bfpNum_to_float(abs(float_to_bfpNum(f[0]))) << endl;
     return 0;
 }
 
