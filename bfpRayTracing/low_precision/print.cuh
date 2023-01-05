@@ -3,7 +3,8 @@
 #include <iostream>
 
 #include "bfpStruct.cuh"
-#include "vec3.h"
+#include "bfp.cuh"
+#include "vec3_bfp.h"
 
 void print_bfpNum(bfpNum b);
 void print_bfpBlock(bfpBlock block);
@@ -20,7 +21,7 @@ using namespace std;
 
 /* print Structs*/
 void print_bfpNum(bfpNum b){
-    printf("---------BFP component----------\n");
+    cout << "---------BFP component -------------" << endl;
     printf("sign: %d\n", b.sign);
     printf("exp: %d\n", b.exp);
     printf("mant: %d\n", b.mant);
@@ -37,16 +38,6 @@ void print_bfpBlock(bfpBlock block){
         printf("\t");
         printBit_bfpNum_mant(block.M[i], true);
     }
-}
-
-void print_color(color c){
-    cout << "\n\n---------- COLOR ------------------\n";
-    cout << "R: ";
-    printBit_float(c[0]);
-    cout << "G: ";
-    printBit_float(c[1]);
-    cout << "B: ";
-    printBit_float(c[2]);
 }
 
 /* print processes */
@@ -233,5 +224,3 @@ void printBit_ulong(long long num, bool newLine){   //4bits grouped together
         printf("\n");
     }
 }
-
-

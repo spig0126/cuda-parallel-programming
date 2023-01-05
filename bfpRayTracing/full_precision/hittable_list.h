@@ -69,7 +69,7 @@ bool hittable_list::bounding_box(float time0, float time1, aabb &output_box) con
 
 	for (const auto &object : objects)
 	{
-		if (!object->bounding_box(time0, time1, temp_box))	//비어있는 bouding box일 경우
+		if (!object->bounding_box(time0, time1, temp_box))
 			return false;
 		output_box = first_box ? temp_box : surrounding_box(output_box, temp_box);
 		first_box = false;

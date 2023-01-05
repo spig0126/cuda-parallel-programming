@@ -9,7 +9,7 @@
 #define DOUBLE_MANT_BITSIZE 52
 #define MAX_BITSIZE 100
 
-#define BFP_MANT_BITSIZE 16
+#define BFP_MANT_BITSIZE 23
 #define BFP_EXP_BITSIZE 8
 
 using namespace std;
