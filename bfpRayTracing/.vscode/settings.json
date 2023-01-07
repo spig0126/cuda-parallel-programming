@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "*.tcc": "cpp",
+        "istream": "cpp",
+        "limits": "cpp",
+        "string_view": "cpp",
+        "cmath": "cpp",
+        "ostream": "cpp"
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "files.trimFinalNewlines": true,
+    "editor.formatOnType": true
+}
