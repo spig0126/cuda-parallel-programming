@@ -235,7 +235,6 @@ namespace bfp
         // std::cout << "\nstep 0: decide exponent" << endl;
         // printBit_ulong(a_mant_temp, true);
         // printBit_ulong(b_mant_temp, true);
-        // printBit_ulong(res.exp, true);
 
         // if addition result is 0, skip process
         if ((a.sign != b.sign) && (a_mant_temp == b_mant_temp))
@@ -273,71 +272,62 @@ namespace bfp
         // std::cout << "\nstep 3: convert to signed magnitude if negative" << endl;
         // printBit_ulong(res_mant_temp, true);
 
-        // 4. normalization(implicit 1)
-        if (a.sign | b.sign) // add implicit 1 for negative number addition
+        // 4. normalization(carry)
+        int carry = (int)(res_mant_temp >> 62);
+        while (carry)
+        { // if there is carry
+            res_mant_temp >>= 1;
+            res.exp += 1;
+            carry >>= 1;
+        }
+
+        // std::cout << "\nstep 4: normalization(carry)" << endl;
+        // printBit_ulong(res_mant_temp, true);
+
+        // 5. noramlziation(implicit 1)
+        if (a.sign ^ b.sign)
             res_mant_temp |= implicit_1;
-        bool has_implicit_1 = (bool)(res_mant_temp >> 61);
-        if (res.exp && !has_implicit_1)
-        {
-            while (!(res_mant_temp & implicit_1))
-            { // if there is no implicit 1
-                res_mant_temp <<= 1;
-                res.exp -= 1;
-            }
+        while (!(res_mant_temp & implicit_1))
+        { // if there is no implicit 1
+            res_mant_temp <<= 1;
+            res.exp -= 1;
         }
 
         // std::cout << "\nstep 5: normalization(implicit 1)" << endl;
         // printBit_ulong(res_mant_temp, true);
 
-        int carry = (int)(res_mant_temp >> 62);
-        do
+        // 6. rounding to nearest even
+        long long t = (long long)1 << temp_shift_num;
+        unsigned short last_bit =
+            (unsigned short)((res_mant_temp & t) >> temp_shift_num);
+        t >>= 1;
+        unsigned short ground_bit =
+            (unsigned short)((res_mant_temp & t) >> temp_shift_num - 1);
+        t >>= 1;
+        unsigned short round_bit =
+            (unsigned short)((res_mant_temp & t) >> temp_shift_num - 2);
+        t -= 1;
+        unsigned short sticky_bits = (unsigned short)((bool)(res_mant_temp & t));
+
+        long long lsb = (long long)1 << temp_shift_num;
+        if (ground_bit)
         {
-            // 5. normalization(carry)
-            while (carry)
-            { // if there is carry
-                res_mant_temp >>= 1;
-                res.exp += 1;
-                carry >>= 1;
-            }
-
-            // std::cout << "\nstep 4: normalization(carry)" << endl;
-            // printBit_ulong(res_mant_temp, true);
-
-            // 6. rounding to nearest even
-            long long t = (long long)1 << temp_shift_num;
-            unsigned short last_bit =
-                (unsigned short)((res_mant_temp & t) >> temp_shift_num);
-            t >>= 1;
-            unsigned short ground_bit =
-                (unsigned short)((res_mant_temp & t) >> temp_shift_num - 1);
-            t >>= 1;
-            unsigned short round_bit =
-                (unsigned short)((res_mant_temp & t) >> temp_shift_num - 2);
-            t -= 1;
-            unsigned short sticky_bits = (unsigned short)((bool)(res_mant_temp & t));
-
-            long long lsb = (long long)1 << temp_shift_num;
-            if (ground_bit)
-            {
-                if (round_bit == 0 && sticky_bits == 0)
-                { // round to even
-                    if (last_bit)
-                    {
-                        res_mant_temp += lsb;
-                    }
-                }
-                else
+            if (round_bit == 0 && sticky_bits == 0)
+            { // round to even
+                if (last_bit)
                 {
-                    res_mant_temp += lsb; // round up
+                    res_mant_temp += lsb;
                 }
             }
+            else
+            {
+                res_mant_temp += lsb; // round up
+            }
+        }
 
-            // std::cout << "\nstep 6: rounding" << endl;
-            // printBit_ulong(res_mant_temp, true);
-            // std::cout << last_bit << ground_bit << round_bit << sticky_bits << endl;
-
-            carry = (int)(res_mant_temp >> 62);
-        } while (carry);
+        // std::cout << "\nstep 6: rounding" << endl;
+        // printBit_ulong(res_mant_temp, true);
+        // std::cout << last_bit << ground_bit << round_bit << sticky_bits << endl;
 
         // 7. store result
         res.mant = (int)(res_mant_temp >> temp_shift_num);
@@ -362,101 +352,94 @@ namespace bfp
         if (b.mant == 0 && b.exp == 0)
             return b_0;
 
-        // underflow: if number is too small return 0
+        // if number is too small return 0
         if ((int)res.exp < 0)
             return b_0;
 
-        // std::cout << "\nstep 0: conversion to temps"
-        //           << endl;
-        // printBit_ulong((unsigned long long)a.mant, true);
-        // printBit_ulong((unsigned long long)b.mant, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
+        std::cout << "\nstep 0: conversion to temps"
+                  << endl;
+        printBit_ulong((unsigned long long)a.mant, true);
+        printBit_ulong((unsigned long long)b.mant, true);
+        printBit_ulong((unsigned long long)res.exp, true);
 
         // 1. multiply
         res_mant_temp = (unsigned long long)a.mant * (unsigned long long)b.mant;
 
-        // std::cout << "\nstep 1: multiply" << endl;
-        // printBit_ulong(res_mant_temp, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
+        std::cout << "\nstep 1: multiply" << endl;
+        printBit_ulong(res_mant_temp, true);
+        printBit_ulong((unsigned long long)res.exp, true);
 
         // 3. normalization(implicit 1)
-        if (res.exp)
+        unsigned long long implicit_1 = (unsigned long long)1 << (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE);
+        unsigned long long before_mant = res_mant_temp;
+        unsigned int before_exp = res.exp;
+        if (res.exp) // exponent==0이면 implicit 1을 추가하지 않기 때문
         {
-            unsigned long long implicit_1 = (unsigned long long)1 << (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE);
-            bool has_implicit_1 = (bool)(res_mant_temp >> (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE));
-            // long long left_shift_cnt = 0;
-
-            if (!has_implicit_1)
-            { // exponent==0이면 implicit 1을 추가하지 않기 때문
-                while (res.exp && !(res_mant_temp & implicit_1))
-                { // if there is no implicit 1
-                    res_mant_temp <<= 1;
-                    // left_shift_cnt++;
-                    res.exp -= 1;
-                }
+            while (!(res_mant_temp & implicit_1))
+            { // if there is no implicit 1
+                res_mant_temp <<= 1;
+                res.exp -= 1;
             }
-
-            if (res.exp && (a.exp == 0 ^ b.exp == 0))
-                res.exp += 1;
-
-            // res.exp = (unsigned int)(std::max((long long)0, (long long)res.exp - left_shift_cnt));
         }
 
-        // std::cout << "\nstep 3: normalization(implicit 1)" << endl;
-        // printBit_ulong(res_mant_temp, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
-
-
-        int carry = (int)(res_mant_temp >> (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE + 1));
-        do
+        if (int(res.exp) < 0)
         {
-            // 4. normalization(Carry)
-            while (carry)
-            { // if there is carry
-                res_mant_temp >>= 1;
-                res.exp += 1;
-                carry >>= 1;
-            }
+            res_mant_temp = before_mant << before_exp;
+            res.exp = 0;
+        }
 
-            // std::cout << "\nstep 4: normalization(carry)" << endl;
-            // printBit_ulong(res_mant_temp, true);
-            // printBit_ulong((unsigned long long)res.exp, true);
+        if (res.exp && (a.exp == 0 || b.exp == 0))
+            res.exp += 1;
 
-            // 5. rounding to nearest even
-            int t = (int)std::pow(2, BFP_MANT_BITSIZE);
-            unsigned short last_bit =
-                (unsigned short)((res_mant_temp & t) >> BFP_MANT_BITSIZE);
-            t >>= 1;
-            unsigned short ground_bit =
-                (unsigned short)((res_mant_temp & t) >> BFP_MANT_BITSIZE - 1);
-            t >>= 1;
-            unsigned short round_bit =
-                (unsigned short)((res_mant_temp & t) >> BFP_MANT_BITSIZE - 2);
-            t -= 1;
-            unsigned short sticky_bits = (unsigned short)((bool)(res_mant_temp & t));
+        std::cout << "\nstep 3: normalization(implicit 1)" << endl;
+        printBit_ulong(res_mant_temp, true);
+        printBit_ulong((unsigned long long)res.exp, true);
 
-            int lsb = (int)std::pow(2, BFP_MANT_BITSIZE);
-            if (ground_bit)
-            {
-                if (round_bit == 0 && sticky_bits == 0)
-                { // round to even
-                    if (last_bit)
-                    {
-                        res_mant_temp += lsb;
-                    }
-                }
-                else
+        // 4. rounding to nearest even
+        int t = (int)std::pow(2, BFP_MANT_BITSIZE);
+        unsigned short last_bit =
+            (unsigned short)((res_mant_temp & t) >> BFP_MANT_BITSIZE);
+        t >>= 1;
+        unsigned short ground_bit =
+            (unsigned short)((res_mant_temp & t) >> BFP_MANT_BITSIZE - 1);
+        t >>= 1;
+        unsigned short round_bit =
+            (unsigned short)((res_mant_temp & t) >> BFP_MANT_BITSIZE - 2);
+        t -= 1;
+        unsigned short sticky_bits = (unsigned short)((bool)(res_mant_temp & t));
+
+        int lsb = (int)std::pow(2, BFP_MANT_BITSIZE);
+        if (ground_bit)
+        {
+            if (round_bit == 0 && sticky_bits == 0)
+            { // round to even
+                if (last_bit)
                 {
-                    res_mant_temp += lsb; // round up
+                    res_mant_temp += lsb;
                 }
             }
+            else
+            {
+                res_mant_temp += lsb; // round up
+            }
+        }
 
-            // std::cout << "\nstep 5: rounding" << endl;
-            // printBit_ulong(res_mant_temp, true);
-            // std::cout << last_bit << ground_bit << round_bit << sticky_bits << endl;
+        std::cout << "\nstep 4: rounding" << endl;
+        printBit_ulong(res_mant_temp, true);
+        std::cout << last_bit << ground_bit << round_bit << sticky_bits << endl;
 
-            carry = (int)(res_mant_temp >> (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE + 1)); // update carry
-        } while (carry);
+        // 2. normalization(carry)
+        unsigned long long carry = res_mant_temp >> (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE + 1);
+        while (carry)
+        { // if there is carry
+            res_mant_temp >>= 1;
+            res.exp += 1;
+            carry >>= 1;
+        }
+
+        std::cout << "\nstep 2: normalization(carry)" << endl;
+        printBit_ulong(res_mant_temp, true);
+        printBit_ulong((unsigned long long)res.exp, true);
 
         res.mant =
             (int)(res_mant_temp >> BFP_MANT_BITSIZE); // save result in res.mant
@@ -476,129 +459,61 @@ namespace bfp
             throw std::invalid_argument("EXCEPTION: division with 0");
             exit(0);
         }
-
-        // underflow: if number is too small return 0
-        if ((int)res.exp < 0)
-            return b_0;
-
-        // 0. conversion to temps & shifting
-        unsigned long long a_temp = (unsigned long long)a.mant;
-        unsigned long long b_temp = (unsigned long long)b.mant;
-
-        // std::cout << "\nstep 0: conversion to temps"
-        //           << endl;
-        // printBit_ulong(a_temp, true);
-        // printBit_ulong(b_temp, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
-
-        unsigned long long msb = (unsigned long long)1 << 63;
-        long long shift_cnt = -(64 - BFP_SIGNIFICAND_BITSIZE);
-
-        while (!(a_temp & msb))
-        {
-            shift_cnt++;
-            a_temp <<= 1;
-        }
-        res.exp = std::max((long long)0, res.exp - shift_cnt);
-
-        // // unsigned long long a_temp = (unsigned long long)a.mant << (64 - BFP_SIGNIFICAND_BITSIZE);
-
-        // cout << "shift cnt: " << shift_cnt << endl;
-        // printBit_ulong(a_temp, true);
-        // printBit_ulong(b_temp, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
-
         // 1. divide mantissas
+        unsigned long long a_temp = (unsigned long long)a.mant
+                                    << (64 - 1 - BFP_MANT_BITSIZE);
+        unsigned long long b_temp = (unsigned long long)b.mant;
         unsigned long long res_mant_temp = (unsigned long long)a_temp / b_temp;
 
-        // std::cout << "\nstep 1: division" << endl;
-        // printBit_ulong(res_mant_temp, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
-
         // 2. normalization(implicit 1)
-        if (res.exp)
+        unsigned long long implicit_1 =
+            (unsigned long long)std::pow(2, (64 - 1 - BFP_MANT_BITSIZE));
+        while (!(res_mant_temp & implicit_1))
         {
-            unsigned long long implicit_1 = (unsigned long long)1 << (64 - BFP_SIGNIFICAND_BITSIZE);
-            bool has_implicit_1 = (bool)(res_mant_temp >> (64 - BFP_SIGNIFICAND_BITSIZE));
-
-            if (!has_implicit_1)
-            {
-                while (!(res_mant_temp & implicit_1))
-                {
-                    res_mant_temp <<= 1;
-                    res.exp -= 1;
-                }
-            }
-
-            if (a.exp == 0 ^ b.exp == 0)
-                res.exp += 1;
-        }
-        else
-        {
-            res_mant_temp >>= 1;
-            // res_mant_temp += (unsigned long long)1 << (64 - 1 - BFP_MANT_BITSIZE - BFP_MANT_BITSIZE);
+            res_mant_temp <<= 1;
+            res.exp -= 1;
         }
 
-        // std::cout << "\nstep 2: normalization(implicit 1)" << endl;
-        // printBit_ulong(res_mant_temp, true);
-        // printBit_ulong((unsigned long long)res.exp, true);
+        // 3. rounding to nearest even
+        int lsb_zero_cnt = 64 - 1 - BFP_MANT_BITSIZE - BFP_MANT_BITSIZE;
+        unsigned short t = (unsigned short)std::pow(2, lsb_zero_cnt);
+        unsigned short last_bit =
+            (unsigned short)((res_mant_temp & t) >> lsb_zero_cnt);
+        t >>= 1;
+        unsigned short ground_bit =
+            (unsigned short)((res_mant_temp & t) >> (lsb_zero_cnt - 1));
+        t >>= 1;
+        unsigned short round_bit =
+            (unsigned short)((res_mant_temp & t) >> (lsb_zero_cnt - 2));
+        t -= 1;
+        unsigned short sticky_bits = (unsigned short)((bool)(res_mant_temp & t));
 
-        int carry = (int)(res_mant_temp >> (64 - BFP_SIGNIFICAND_BITSIZE + 1));
-        do
+        unsigned short lsb = (unsigned short)std::pow(2, lsb_zero_cnt);
+        if (ground_bit)
         {
-            // 3. normalization(carry)
-            while (carry)
-            { // if there is carry
-                res_mant_temp >>= 1;
-                res.exp += 1;
-                carry >>= 1;
-            }
-
-            // std::cout << "\nstep 4: normalization(carry)" << endl;
-            // printBit_ulong(res_mant_temp, true);
-            // printBit_ulong((unsigned long long)res.exp, true);
-
-            // 4. rounding to nearest even
-            int lsb_zero_cnt = 64 - 1 - BFP_MANT_BITSIZE - BFP_MANT_BITSIZE;
-            unsigned long long t = (unsigned long long)1 << lsb_zero_cnt;
-            unsigned short last_bit =
-                (unsigned short)((res_mant_temp & t) >> lsb_zero_cnt);
-            t >>= 1;
-            unsigned short ground_bit =
-                (unsigned short)((res_mant_temp & t) >> (lsb_zero_cnt - 1));
-            t >>= 1;
-            unsigned short round_bit =
-                (unsigned short)((res_mant_temp & t) >> (lsb_zero_cnt - 2));
-            t -= 1;
-            unsigned short sticky_bits = (unsigned short)((bool)(res_mant_temp & t));
-
-            unsigned long long lsb = (unsigned long long)1 << lsb_zero_cnt;
-            if (ground_bit)
+            if (round_bit == 0 && sticky_bits == 0)
             {
-                if (round_bit == 0 && sticky_bits == 0)
-                {
-                    if (last_bit)
-                    {
-                        res_mant_temp += lsb;
-                    }
-                }
-                else
+                if (last_bit)
                 {
                     res_mant_temp += lsb;
                 }
             }
+            else
+            {
+                res_mant_temp += lsb;
+            }
+        }
 
-            // std::cout << "\nstep 4: rounding" << endl;
-            // printBit_ulong(res_mant_temp, true);
-            // printBit_ulong((unsigned long long)res.exp, true);
-            // std::cout << last_bit << ground_bit << round_bit << sticky_bits << endl;
-
-            carry = (int)(res_mant_temp >> (64 - BFP_SIGNIFICAND_BITSIZE + 1));
-
-        } while (carry);
-
-        int lsb_zero_cnt = 64 - 1 - BFP_MANT_BITSIZE - BFP_MANT_BITSIZE;
         res.mant = (int)(res_mant_temp >> lsb_zero_cnt); // save result in res.mant
+
+        // 4. normalization(carry)
+        int carry = res.mant >> (BFP_MANT_BITSIZE + 1);
+        while (carry)
+        {
+            res.mant >>= 1;
+            res.exp += 1;
+            carry >>= 1;
+        }
 
         return res;
     }

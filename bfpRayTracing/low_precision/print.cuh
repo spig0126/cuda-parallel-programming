@@ -2,9 +2,7 @@
 #include <string.h>
 #include <iostream>
 
-#include "bfpStruct.cuh"
 #include "bfp.cuh"
-#include "vec3_bfp.h"
 
 void print_bfpNum(bfpNum b);
 void print_bfpBlock(bfpBlock block);
@@ -22,54 +20,55 @@ using namespace std;
 /* print Structs*/
 void print_bfpNum(bfpNum b){
     cout << "---------BFP component -------------" << endl;
-    printf("sign: %d\n", b.sign);
-    printf("exp: %d\n", b.exp);
-    printf("mant: %d\n", b.mant);
+    cout << "sign: " << b.sign << endl;
+    cout << "exp: " << b.exp << endl;
+    cout << "mant: " << b.mant << endl;
 }
 
 void print_bfpBlock(bfpBlock block){
     cout << "----------BFP block ------------------\n";
     cout << "N: " << block.M.size() << "\ncommon_exp: ";
     printBit_uint(block.common_exp, FLOAT_EXP_BITSIZE, false);
-    printf("\n");
+    cout << endl;
     for(int i=0; i<block.M.size(); i++){
-        printf("%d: ", i);
+        cout << i << ": ";
         printBit_uint(block.sign[i], 1, false);
-        printf("\t");
+        cout << "\t";
         printBit_bfpNum_mant(block.M[i], true);
     }
 }
 
 /* print processes */
 void print_float_block_formatting(vector<float> f, bfpBlock block){
-    printf("=========================================================\n");
-    printf("---------Before block formatiing---------\n");
+    cout << "=========================================================" << endl;
+    cout << "---------Before block formatiing---------" << endl;
+
     for(int i=0; i<f.size(); i++){
         printBit_float(f[i]);
     }
     print_bfpBlock(block);
-    printf("=========================================================\n");
+    cout << "=========================================================" << endl;
 }
 
 /* print bit representations of bfpStructs */
 void printBit_bfpNum(bfpNum b, bool nextLine){
     printBit_uint(b.sign, 1, false);
-    printf(" ");
+    cout << " " ;
     printBit_uint(b.exp, BFP_EXP_BITSIZE, false);
-    printf(" ");
+    cout << " " ;
     printBit_uint(b.mant, BFP_MANT_BITSIZE, false);
 
     if(nextLine){
-        printf("\n");
+        cout << endl;
     }
 }
 
 void printBit_bfpNum_exp(unsigned int e, bool nextLine){
-    printf("%d => ", e);
+    cout << e << " => ";
     printBit_uint(e, BFP_EXP_BITSIZE, false);
     
     if(nextLine){
-        printf("\n");
+        cout << endl;
     }
 }
 
@@ -95,7 +94,6 @@ void printBit_bfpNum_mant(int m, bool nextLine){
     if(nextLine){
         cout << "\n";
     }
-
 }
 
 void printBit_float_mant(int m, bool newLine){
@@ -114,12 +112,12 @@ void printBit_float_mant(int m, bool newLine){
     }
     
     for(int i=29; i>=0; i--){
-         printf("%c", out[i]);
+        cout << out[i];
     }
     printf(" (0x%.8x)", m);
 
     if(newLine){
-        printf("\n");
+        cout << "\n";
     }
 }
 
@@ -138,19 +136,19 @@ void printBit_uint(unsigned int num, int len, bool reverse){
 
     if(reverse){
         for(int i=0; i<len; i++){
-            printf("%c", out[i]);
+            cout << out[i];
         }
         
     }
     else{
         for(int i=len-1; i>=0; i--){
-            printf("%c", out[i]);
+            cout << out[i];
         }
     }
 }
 
 void printBit_float(float f){
-    printf("%f   =>   ", f);
+    cout << f << "   =>   " ;
     //cast to integer for bitwise operations
     unsigned int* temp = reinterpret_cast<unsigned int*>(&f); 
     unsigned int orginal_val = *temp;
@@ -169,7 +167,7 @@ void printBit_float(float f){
     }
     
     for(int i=35; i>=0; i--){
-         printf("%c", out[i]);
+            cout << out[i];
     }
     printf(" (0x%.8x)\n", orginal_val);
 }
@@ -190,12 +188,12 @@ void printBit_sint(int num, bool newLine){     //4bits grouped together
     }
     
     for(int i=39; i>=0; i--){
-         printf("%c", out[i]);
-    }
+        cout << out[i];
+    }   
     printf(" (0x%x)", num);
 
     if(newLine){
-        printf("\n");
+        cout << endl;
     }
 }
 
@@ -215,12 +213,12 @@ void printBit_ulong(long long num, bool newLine){   //4bits grouped together
     }
     
     for(int i=79; i>=0; i--){
-         printf("%c", out[i]);
+        cout << out[i];
     }
 
     printf("\t(%llx)", num);
 
     if(newLine){
-        printf("\n");
+        cout << endl;
     }
 }

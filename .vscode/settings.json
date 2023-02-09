@@ -4,5 +4,8 @@
     "C_Cpp.clang_format_fallbackStyle": "Google",
     "editor.tabSize": 4,
     "editor.formatOnSave": true,
-    "editor.formatOnPaste": true
+    "editor.formatOnPaste": true,
+    "files.associations": {
+        "limits": "cpp"
+    }
 }

@@ -88,7 +88,7 @@ void gpuMatrixMul(unsigned int *d_a, unsigned int *d_b, unsigned int *d_c, const
 		d_c[index] = 0;
 		for (int i = 0; i < aColSize; i++){
 			d_c[index] += d_a[row * aColSize + i] * d_b[i * bColSize + col];
-			//intf("(%d/%d)=(%d/%d) %d\n", row, col, d_c[index], (row*aColSize+i), (i*bRowSize + col));
+			printf("(%d/%d)=(%d/%d) %d\n", row, col, d_c[index], (row*aColSize+i), (i*bRowSize + col));
 		}
 	}
 }

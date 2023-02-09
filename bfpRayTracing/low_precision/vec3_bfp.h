@@ -3,6 +3,7 @@
 #define VEC3_BFP_H
 
 #include "utility_bfp.h"
+#include <iostream>
 
 using namespace bfp;
 
