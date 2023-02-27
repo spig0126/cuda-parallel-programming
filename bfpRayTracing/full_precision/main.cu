@@ -41,6 +41,7 @@ hittable_list random_scene()
 	auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
 	world.add(make_shared<sphere>(++count, point3(0, -1000, 0), 1000, ground_material));
 
+	/* random spheres */
 	for (int a = -n; a < n; a++)
 	{
 		for (int b = -n; b < n; b++)

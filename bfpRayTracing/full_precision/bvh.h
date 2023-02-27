@@ -66,7 +66,7 @@ bool bvh_node::hit(const ray &r, float t_min, float t_max, hit_record &rec) cons
         return false;
 
     // Node Information
-    point3 pm = box.minimum, pM = box.maximum;
+    // point3 pm = box.minimum, pM = box.maximum;
     // printf("------------------------------ NODE %d HIT! ------------------------------\n", nodeIdx);
     // printf("  -%-8s: (%.1lf,%.1lf,%.1lf) ~ (%.1lf,%.1lf,%.1lf)\n", "AABB", pm.e[0], pm.e[1], pm.e[2], pM.e[0], pM.e[1], pM.e[2]);
     // printf("--------------------------------------------------------------------------\n");
@@ -132,7 +132,7 @@ bvh_node::bvh_node(
     box = surrounding_box(box_left, box_right);
 
     // Node Information
-    point3 pm = box.minimum, pM = box.maximum;
+    // point3 pm = box.minimum, pM = box.maximum;
     // printf("------------------------------ NODE %d CREATED (obj# = %d) ------------------------------\n", nodeIdx, object_span);
     // printf("  -%-8s: (%d ~ %d)\n", "Objects", (int)start, (int)end - 1);
     // printf("  -%-8s: (%.1lf,%.1lf,%.1lf) ~ (%.1lf,%.1lf,%.1lf)\n", "AABB", pm.e[0], pm.e[1], pm.e[2], pM.e[0], pM.e[1], pM.e[2]);
