@@ -52,6 +52,41 @@ namespace bfp
             std::cout << endl;
         }
     }
+
+    void printBit_uint(unsigned int num, int len)
+    {
+        char out[MAX_BITSIZE] = "";
+
+        for (int i = 0; i < len; i++, num >>= 1)
+        {
+            if (num & 1)
+            {
+                strcat(out, "1");
+            }
+            else
+            {
+                strcat(out, "0");
+            }
+        }
+
+        for (int i = len - 1; i >= 0; i--)
+        {
+            cout << out[i];
+        }
+    }
+    void printBit_bfpNum(bfpNum b, bool nextLine)
+    {
+        printBit_uint(b.sign, 1);
+        cout << " ";
+        printBit_uint(b.exp, BFP_EXP_BITSIZE);
+        cout << " ";
+        printBit_uint(b.mant, BFP_MANT_BITSIZE);
+
+        if (nextLine)
+        {
+            cout << endl;
+        }
+    }
     //---------------------------------------------------------
 
     /* type conversions */
@@ -129,15 +164,40 @@ namespace bfp
     int bfpNum_to_int(bfpNum b) { return int(bfpNum_to_float(b)); }
 
     /* frequently used bfpNums */
-    bfpNum b_1 = int_to_bfpNum(1);
-    bfpNum b_0 = {0, 0, 0};
-    bfpNum b_2 = int_to_bfpNum(2);
-    bfpNum b_1_neg = int_to_bfpNum(-1);
     bfpNum b_pi = float_to_bfpNum(3.1415926535897932385);
+    bfpNum b_infinity = float_to_bfpNum(std::numeric_limits<float>::infinity());
+
+    bfpNum b_0 = {0, 0, 0};
+    bfpNum b_0_001 = float_to_bfpNum(0.001);
+    bfpNum b_0_1 = float_to_bfpNum(0.1);
+    bfpNum b_0_15 = float_to_bfpNum(0.15);
+    bfpNum b_0_2 = float_to_bfpNum(0.2);
+    bfpNum b_0_3 = float_to_bfpNum(0.3);
+    bfpNum b_0_4 = float_to_bfpNum(0.4);
+    bfpNum b_0_5 = float_to_bfpNum(0.5);
+    bfpNum b_0_6 = float_to_bfpNum(0.6);
+    bfpNum b_0_7 = float_to_bfpNum(0.7);
+    bfpNum b_0_8 = float_to_bfpNum(0.8);
+    bfpNum b_0_9 = float_to_bfpNum(0.9);
+    bfpNum b_0_95 = float_to_bfpNum(0.95);
+    bfpNum b_0_999 = float_to_bfpNum(0.999);
+    bfpNum b_1 = int_to_bfpNum(1);
+    bfpNum b_1_neg = int_to_bfpNum(-1);
+    bfpNum b_1_5 = float_to_bfpNum(1.5);
+    bfpNum b_2 = int_to_bfpNum(2);
+    bfpNum b_3 = int_to_bfpNum(3);
+    bfpNum b_4 = int_to_bfpNum(4);
+    bfpNum b_9 = int_to_bfpNum(9);
+    bfpNum b_10 = int_to_bfpNum(10);
+    bfpNum b_11 = int_to_bfpNum(11);
+    bfpNum b_13 = int_to_bfpNum(13);
+    bfpNum b_16 = int_to_bfpNum(16);
+    bfpNum b_20 = int_to_bfpNum(20);
+    bfpNum b_121 = int_to_bfpNum(121);
     bfpNum b_180 = int_to_bfpNum(180);
     bfpNum b_256 = int_to_bfpNum(256);
-    bfpNum b_infinity = float_to_bfpNum(std::numeric_limits<float>::infinity());
-    bfpNum b_0_999 = float_to_bfpNum(0.999);
+    bfpNum b_1000 = int_to_bfpNum(1000);
+    bfpNum b_1000_neg = int_to_bfpNum(-1000);
 
     /* block formatting */
     bfpBlock createBfpBlock(vector<float> X)
@@ -201,6 +261,7 @@ namespace bfp
     /* arithmetic operations for 2 numbers */
     bfpNum add(bfpNum a, bfpNum b)
     {
+
         bfpNum res = {0, 0, 0};
 
         // if both numbers are 0, skip process
@@ -274,8 +335,8 @@ namespace bfp
         // printBit_ulong(res_mant_temp, true);
 
         // 4. normalization(implicit 1)
-        if (a.sign | b.sign) // add implicit 1 for negative number addition
-            res_mant_temp |= implicit_1;
+        // if (res.sign && (a.sign ^ b.sign)) // add implicit 1 for negative number addition
+        //     res_mant_temp |= implicit_1;
         bool has_implicit_1 = (bool)(res_mant_temp >> 61);
         if (res.exp && !has_implicit_1)
         {
@@ -353,6 +414,7 @@ namespace bfp
 
     bfpNum mult(bfpNum a, bfpNum b)
     {
+
         bfpNum res = {(unsigned short)(a.sign ^ b.sign), a.exp + b.exp - 127, 0};
         unsigned long long res_mant_temp = 0;
 
@@ -405,7 +467,6 @@ namespace bfp
         // std::cout << "\nstep 3: normalization(implicit 1)" << endl;
         // printBit_ulong(res_mant_temp, true);
         // printBit_ulong((unsigned long long)res.exp, true);
-
 
         int carry = (int)(res_mant_temp >> (BFP_MANT_BITSIZE + BFP_MANT_BITSIZE + 1));
         do
@@ -466,6 +527,7 @@ namespace bfp
 
     bfpNum div(bfpNum a, bfpNum b)
     {
+
         bfpNum res = {(unsigned short)(a.sign ^ b.sign), a.exp - b.exp + 127, 0};
 
         // if a is 0
@@ -631,37 +693,39 @@ namespace bfp
 
     bool compare(bfpNum a, bfpNum b)
     {
-        /* align exponents */
-        if (a.exp >= b.exp)
-        {
-            b.mant >>= (a.exp - b.exp);
-        }
-        else
-        {
-            a.mant >>= (b.exp - a.exp);
-        }
+        return bfpNum_to_float(a) > bfpNum_to_float(b);
+        // /* align exponents */
+        // if (a.exp >= b.exp)
+        // {
+        //     b.mant >>= (a.exp - b.exp);
+        // }
+        // else
+        // {
+        //     a.mant >>= (b.exp - a.exp);
+        // }
 
-        /* a > b */
-        if (a.sign ^ b.sign)
-        { // 둘 중 하나만 음수인 경우
-            if (a.sign)
-                return false; // a가 음수인 경우
-            else
-                return true; // b가 음수인 경우
-        }
-        else if (a.sign && b.sign)
-        { // 둘 다 음수인 경우
-            return a.mant < b.mant;
-        }
-        else
-        { // 둘 다 양수인 경우
-            return a.mant > b.mant;
-        }
+        // /* a > b */
+        // if (a.sign ^ b.sign)
+        // { // 둘 중 하나만 음수인 경우
+        //     if (a.sign)
+        //         return false; // a가 음수인 경우
+        //     else
+        //         return true; // b가 음수인 경우
+        // }
+        // else if (a.sign && b.sign)
+        // { // 둘 다 음수인 경우
+        //     return a.mant < b.mant;
+        // }
+        // else
+        // { // 둘 다 양수인 경우
+        //     return a.mant > b.mant;
+        // }
     }
 
     bool isequal(bfpNum a, bfpNum b)
     {
-        return (a.sign == b.sign) && (a.exp == b.exp) && (a.mant == b.mant);
+        return bfpNum_to_float(a) == bfpNum_to_float(b);
+        // return (a.sign == b.sign) && (a.exp == b.exp) && (a.mant == b.mant);
     }
 
     inline bfpNum operator+(bfpNum a, bfpNum b) { return add(a, b); }
@@ -680,32 +744,36 @@ namespace bfp
 
     inline bfpNum min(bfpNum a, bfpNum b)
     {
-        /* align exponents */
-        if (a.exp >= b.exp)
-        {
-            b.mant >>= (a.exp - b.exp);
-        }
-        else
-        {
-            a.mant >>= (b.exp - a.exp);
-        }
+        float a_f = bfpNum_to_float(a);
+        float b_f = bfpNum_to_float(b);
+        float min = std::fmin(a_f, b_f);
+        return float_to_bfpNum(min);
+        // /* align exponents */
+        // if (a.exp >= b.exp)
+        // {
+        //     b.mant >>= (a.exp - b.exp);
+        // }
+        // else
+        // {
+        //     a.mant >>= (b.exp - a.exp);
+        // }
 
-        /* a > b */
-        if (a.sign ^ b.sign)
-        { // 둘 중 하나만 음수인 경우
-            if (a.sign)
-                return a; // a가 음수인 경우
-            else
-                return b; // b가 음수인 경우
-        }
-        else if (a.sign && b.sign)
-        { // 둘 다 음수인 경우
-            if (a.mant < b.mant)
-                return b;
-            else
-                return a;
-        }
-        else
+        // /* a > b */
+        // if (a.sign ^ b.sign)
+        // { // 둘 중 하나만 음수인 경우
+        //     if (a.sign)
+        //         return a; // a가 음수인 경우
+        //     else
+        //         return b; // b가 음수인 경우
+        // }
+        // else if (a.sign && b.sign)
+        // { // 둘 다 음수인 경우
+        //     if (a.mant < b.mant)
+        //         return b;
+        //     else
+        //         return a;
+        // }
+        // else
         { // 둘 다 양수인 경우
             if (a.mant > b.mant)
                 return b;
@@ -716,32 +784,36 @@ namespace bfp
 
     inline bfpNum max(bfpNum a, bfpNum b)
     {
-        /* align exponents */
-        if (a.exp >= b.exp)
-        {
-            b.mant >>= (a.exp - b.exp);
-        }
-        else
-        {
-            a.mant >>= (b.exp - a.exp);
-        }
+        float a_f = bfpNum_to_float(a);
+        float b_f = bfpNum_to_float(b);
+        float max = std::fmax(a_f, b_f);
+        return float_to_bfpNum(max);
+        // /* align exponents */
+        // if (a.exp >= b.exp)
+        // {
+        //     b.mant >>= (a.exp - b.exp);
+        // }
+        // else
+        // {
+        //     a.mant >>= (b.exp - a.exp);
+        // }
 
-        /* a > b */
-        if (a.sign ^ b.sign)
-        { // 둘 중 하나만 음수인 경우
-            if (a.sign)
-                return b; // a가 음수인 경우
-            else
-                return a; // b가 음수인 경우
-        }
-        else if (a.sign && b.sign)
-        { // 둘 다 음수인 경우
-            if (a.mant < b.mant)
-                return a;
-            else
-                return b;
-        }
-        else
+        // /* a > b */
+        // if (a.sign ^ b.sign)
+        // { // 둘 중 하나만 음수인 경우
+        //     if (a.sign)
+        //         return b; // a가 음수인 경우
+        //     else
+        //         return a; // b가 음수인 경우
+        // }
+        // else if (a.sign && b.sign)
+        // { // 둘 다 음수인 경우
+        //     if (a.mant < b.mant)
+        //         return a;
+        //     else
+        //         return b;
+        // }
+        // else
         { // 둘 다 양수인 경우
             if (a.mant > b.mant)
                 return a;

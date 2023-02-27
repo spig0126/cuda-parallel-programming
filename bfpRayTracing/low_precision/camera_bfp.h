@@ -41,8 +41,10 @@ public:
 
     ray get_ray(bfpNum s, bfpNum t) const
     {
+
         vec3 rd = lens_radius * random_in_unit_disk(true);
         vec3 offset = u * rd.x() + v * rd.y();
+
         return ray(
             origin + offset,
             lower_left_corner + s * horizontal + t * vertical - origin - offset,

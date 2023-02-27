@@ -175,6 +175,7 @@ inline vec3 refract(const vec3 &uv, const vec3 &n, bfpNum etai_over_etat)
 
 vec3 random_in_unit_disk(bool t)
 {
+
     while (true)
     {
         vec3 p = vec3(random_num(b_1_neg, b_1), random_num(b_1_neg, b_1), b_0);

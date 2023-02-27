@@ -10,14 +10,34 @@ inline bfpNum degrees_to_radians(bfpNum degrees)
     return degrees * (b_pi / b_180);
 }
 
+inline float random_float()
+{
+    // Returns a random real in [0,1).
+    return rand() / (RAND_MAX + 1.0);
+}
+
+inline float random_float(float min, float max)
+{
+    // Returns a random real in [min,max).
+    return min + (max - min) * random_float();
+}
+
 inline bfpNum random_num()
 {
     return float_to_bfpNum(rand() / (RAND_MAX + 1.0));
 }
 
+// inline bfpNum random_num(float min, float max)
+// {
+
+// }
+
 inline bfpNum random_num(bfpNum min, bfpNum max)
 {
-    return min + (max - min) * random_num();
+    float f_min = bfpNum_to_float(min);
+    float f_max = bfpNum_to_float(max);
+    float f_res = f_min + (f_max - f_min) * random_float();
+    return float_to_bfpNum(f_res);
 }
 
 inline float clamp(float x, float min, float max)

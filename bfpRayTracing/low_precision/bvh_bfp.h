@@ -39,7 +39,7 @@ bool bvh_node::hit(const ray &r, bfpNum t_min, bfpNum t_max, hit_record &rec) co
         return false;
 
     // Node Information
-    point3 pm = box.minimum, pM = box.maximum;
+    // point3 pm = box.minimum, pM = box.maximum;
 
     bool hit_left = left->hit(r, t_min, t_max, rec);
     bool hit_right = right->hit(r, t_min, hit_left ? rec.t : t_max, rec);
@@ -95,7 +95,7 @@ bvh_node::bvh_node(int idx,
     box = surrounding_box(box_left, box_right); // 현재 노드의 aabb 생성 fuction
 
     // Node Information
-    point3 pm = box.minimum, pM = box.maximum;
+    // point3 pm = box.minimum, pM = box.maximum;
 }
 
 inline bool box_compare(const shared_ptr<hittable> a,
