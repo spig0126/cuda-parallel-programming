@@ -24,20 +24,15 @@ inline float random_float(float min, float max)
 
 inline bfpNum random_num()
 {
-    return float_to_bfpNum(rand() / (RAND_MAX + 1.0));
+    return float_to_bfpNum(random_float());
 }
-
-// inline bfpNum random_num(float min, float max)
-// {
-
-// }
 
 inline bfpNum random_num(bfpNum min, bfpNum max)
 {
     float f_min = bfpNum_to_float(min);
     float f_max = bfpNum_to_float(max);
-    float f_res = f_min + (f_max - f_min) * random_float();
-    return float_to_bfpNum(f_res);
+
+    return float_to_bfpNum(random_float(f_min, f_max));
 }
 
 inline float clamp(float x, float min, float max)

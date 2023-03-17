@@ -3,6 +3,7 @@
 #define VEC3_BFP_H
 
 #include "utility_bfp.h"
+#include "vec3_float.h"
 #include <iostream>
 
 using namespace bfp;
@@ -17,7 +18,7 @@ public:
     bfpNum y() const { return e[1]; }
     bfpNum z() const { return e[2]; }
 
-    vec3 operator-() const { return vec3(abs(e[0]), abs(e[1]), abs(e[2])); }
+    vec3 operator-() const { return vec3(-(e[0]), -(e[1]), -(e[2])); }
     bfpNum operator[](int i) const { return e[i]; }
     bfpNum &operator[](int i) { return e[i]; }
 
@@ -57,7 +58,7 @@ public:
 
     bool near_zero() const
     {
-        bfpNum s = int_to_bfpNum(0x322bcc77);
+        bfpNum s = float_to_bfpNum(1e-8);
         return (abs(e[0]) < s) && (abs(e[1]) < s) && (abs(e[2]) < s);
     }
 
@@ -71,9 +72,21 @@ public:
         return vec3(random_num(min, max), random_num(min, max), random_num(min, max));
     }
 
+
 public:
     bfpNum e[3];
 };
+
+//conversion functions
+inline vec3_float vec3_bfpNum_to_float(vec3 v)
+{
+    return vec3_float(bfpNum_to_float(v[0]), bfpNum_to_float(v[1]), bfpNum_to_float(v[2]));
+}
+
+inline vec3 vec3_float_to_bfpNum(vec3_float v)
+{
+    return vec3(float_to_bfpNum(v[0]), float_to_bfpNum(v[1]), float_to_bfpNum(v[2]));
+}
 
 // utility functions
 inline std::ostream &operator<<(std::ostream &out, const vec3 &v)

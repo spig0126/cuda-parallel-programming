@@ -59,7 +59,6 @@ bvh_node::bvh_node(int idx,
     auto comparator = (axis == 0)   ? box_x_compare
                       : (axis == 1) ? box_y_compare
                                     : box_z_compare;
-
     if (object_span == 1)
     {
         left = right = objects[start];
@@ -93,7 +92,7 @@ bvh_node::bvh_node(int idx,
         || !right->bounding_box(time0, time1, box_right))
         std::cerr << "No bounding box in bvh_node constructor.\n";
     box = surrounding_box(box_left, box_right); // 현재 노드의 aabb 생성 fuction
-
+ 
     // Node Information
     // point3 pm = box.minimum, pM = box.maximum;
 }

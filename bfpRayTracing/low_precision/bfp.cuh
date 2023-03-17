@@ -13,6 +13,7 @@ namespace bfp
 {
     int BFP_MANT_EXTRACT_BITS = (int)std::pow(2, BFP_MANT_BITSIZE) - 1;
     int BFP_EXP_EXTRACT_BITS = (int)std::pow(2, BFP_EXP_BITSIZE) - 1;
+    int BFP_SIGN_EXTRACT_BITS = 1 << (BFP_MANT_BITSIZE + BFP_EXP_BITSIZE);
     int FLOAT_MANT_EXTRACT_BITS = 0x7fffff;
     int FLOAT_EXP_EXTRACT_BITS = 0x7f800000;
     int FLOAT_SIGN_EXTRACT_BITS = 0x80000000;
@@ -100,14 +101,14 @@ namespace bfp
         mant = (int)b.mant;
 
         if (FLOAT_EXP_BITSIZE < BFP_EXP_BITSIZE)
-            exp >>= (BFP_EXP_BITSIZE - FLOAT_EXP_BITSIZE);
+            exp >>= std::abs(BFP_EXP_BITSIZE - FLOAT_EXP_BITSIZE);
         else
-            exp <<= (FLOAT_EXP_BITSIZE - BFP_EXP_BITSIZE);
+            exp <<= std::abs(FLOAT_EXP_BITSIZE - BFP_EXP_BITSIZE);
 
         if (FLOAT_MANT_BITSIZE < BFP_MANT_BITSIZE)
-            mant >>= (BFP_MANT_BITSIZE - FLOAT_MANT_BITSIZE);
+            mant >>= std::abs(BFP_MANT_BITSIZE - FLOAT_MANT_BITSIZE);
         else
-            mant <<= (FLOAT_MANT_BITSIZE - BFP_MANT_BITSIZE);
+            mant <<= std::abs(FLOAT_MANT_BITSIZE - BFP_MANT_BITSIZE);
 
         mant &= FLOAT_MANT_EXTRACT_BITS; // remove implicit 1
 
@@ -138,11 +139,11 @@ namespace bfp
         if (res.exp)
         {
             res.mant ^=
-                0x00800000;
+                1 << FLOAT_MANT_BITSIZE;
         }
 
         // set bfp's mantissa from float's extracted mantissa bits
-        if (FLOAT_MANT_BITSIZE >=
+        if (FLOAT_MANT_BITSIZE >
             BFP_MANT_BITSIZE)
         { // if bfp mantissa is smaller in bit size than float
           // mantissa
@@ -150,11 +151,12 @@ namespace bfp
         }
 
         // set bfp's exponent from float's extracted exponent bits
-        if (FLOAT_EXP_BITSIZE >= BFP_EXP_BITSIZE)
+        if (FLOAT_EXP_BITSIZE > BFP_EXP_BITSIZE)
         { // if bfp exponent is smaller in
           // bit size than float exponent
             res.exp >>= (FLOAT_EXP_BITSIZE - BFP_EXP_BITSIZE);
         }
+
 
         return res;
     }
@@ -261,6 +263,7 @@ namespace bfp
     /* arithmetic operations for 2 numbers */
     bfpNum add(bfpNum a, bfpNum b)
     {
+        // std::cout << "add " << bfpNum_to_float(a) << " " << bfpNum_to_float(b) << endl;
 
         bfpNum res = {0, 0, 0};
 
@@ -403,6 +406,7 @@ namespace bfp
         // 7. store result
         res.mant = (int)(res_mant_temp >> temp_shift_num);
 
+        // std::cout << "done" << endl;
         return res;
     }
 
@@ -414,8 +418,7 @@ namespace bfp
 
     bfpNum mult(bfpNum a, bfpNum b)
     {
-
-        bfpNum res = {(unsigned short)(a.sign ^ b.sign), a.exp + b.exp - 127, 0};
+        bfpNum res = {(unsigned short)(a.sign ^ b.sign), a.exp + b.exp - BFP_BIAS, 0};
         unsigned long long res_mant_temp = 0;
 
         // if a or b is 0
@@ -528,15 +531,16 @@ namespace bfp
     bfpNum div(bfpNum a, bfpNum b)
     {
 
-        bfpNum res = {(unsigned short)(a.sign ^ b.sign), a.exp - b.exp + 127, 0};
+        bfpNum res = {(unsigned short)(a.sign ^ b.sign), a.exp - b.exp + BFP_BIAS, 0};
 
         // if a is 0
         if (a.sign == 0 && a.exp == 0 && a.mant == 0)
             return b_0;
         if (b.sign == 0 && b.exp == 0 && b.mant == 0)
         {
-            throw std::invalid_argument("EXCEPTION: division with 0");
-            exit(0);
+            return b_infinity;
+            // throw std::invalid_argument("EXCEPTION: division with 0");
+            // exit(0);
         }
 
         // underflow: if number is too small return 0
@@ -655,7 +659,7 @@ namespace bfp
             // printBit_ulong((unsigned long long)res.exp, true);
             // std::cout << last_bit << ground_bit << round_bit << sticky_bits << endl;
 
-            carry = (int)(res_mant_temp >> (64 - BFP_SIGNIFICAND_BITSIZE + 1));
+            carry = (int)(res_mant_temp >> (64 - BFP_SIGNIFICAND_BITSIZE + 1)); 
 
         } while (carry);
 
