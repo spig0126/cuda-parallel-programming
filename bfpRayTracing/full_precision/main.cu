@@ -24,10 +24,13 @@
 #include "mkClockMeasure.h"
 
 #include <iostream>
+#include <string>
 
 #define MAX_SIZE 500
 
-unsigned char *array;
+// using
+using namespace std;
+unsigned char *image_array;
 
 // Functions
 
@@ -41,52 +44,6 @@ hittable_list random_scene()
 	auto ground_material = make_shared<lambertian>(color(0.5, 0.5, 0.5));
 	world.add(make_shared<sphere>(++count, point3(0, -1000, 0), 1000, ground_material));
 
-	/* random spheres */
-	for (int a = -n; a < n; a++)
-	{
-		for (int b = -n; b < n; b++)
-		{
-
-			// Generate constant scene primitives.
-			float choose_mat = (a * 11 + b) / 121;
-
-			// Generate random scene primitives.
-			// auto choose_mat = random_float();
-			// point3 center(a + 0.9*random_float(), 0.2, b + 0.9*random_float());
-			point3 center(a, 0.2, b);
-
-			if ((center - point3(4, 0.2, 0)).length() > 0.9)
-			{
-				shared_ptr<material> sphere_material;
-
-				if (choose_mat < 0.8)
-				{
-
-					// diffuse
-					auto albedo = color::random() * color::random();
-					sphere_material = make_shared<lambertian>(albedo);
-					auto center2 = center + vec3(0, random_float(0, .5), 0);
-					world.add(make_shared<sphere>(
-						++count, center, 0.2, sphere_material));
-				}
-				else if (choose_mat < 0.95)
-				{
-					// metal
-					auto albedo = color::random(0.5, 1);
-					auto fuzz = random_float(0, 0.5);
-					sphere_material = make_shared<metal>(albedo, fuzz);
-					world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
-				}
-				else
-				{
-					// glass
-					sphere_material = make_shared<dielectric>(1.5);
-					world.add(make_shared<sphere>(++count, center, 0.2, sphere_material));
-				}
-			}
-		}
-	}
-
 	auto material1 = make_shared<dielectric>(1.5);
 	world.add(make_shared<sphere>(++count, point3(0, 1, 0), 1.0, material1));
 
@@ -96,12 +53,9 @@ hittable_list random_scene()
 	auto material3 = make_shared<metal>(color(0.7, 0.6, 0.5), 0.0);
 	world.add(make_shared<sphere>(++count, point3(4, 1, 0), 1.0, material3));
 
-	//	return world;
-
 	// Constructing BVH
 	hittable_list world_bvh;
 	world_bvh.add(make_shared<bvh_node>(world, 0, 1));
-	printf("\n\n================================== BVH CONSTURCTION COMPLETED ==================================\n\n\n");
 
 	return world_bvh;
 }
@@ -111,9 +65,6 @@ color ray_color(const ray &r, const hittable &world, int depth)
 {
 
 	hit_record rec;
-
-	// RT18: CHECK THE BACKGROUND COLOR
-	// return vec3(0.5, 0.7, 1.0);
 
 	// Limit the number of child ray.
 	if (depth <= 0)
@@ -139,23 +90,25 @@ color ray_color(const ray &r, const hittable &world, int depth)
 // 3. main
 int main()
 {
-
 	// Measure the execution time.
-	mkClockMeasure *ckCpu = new mkClockMeasure("CPU CODE");
+	mkClockMeasure *ckCpu = new mkClockMeasure("TOTAL TIME");
+	mkClockMeasure *ckWolrdBVH = new mkClockMeasure("CONSTRUCT WORLD & BVH");
+	mkClockMeasure *ckRendering = new mkClockMeasure("RENDERING");
 	ckCpu->clockReset();
+	ckWolrdBVH->clockReset();
+	ckRendering->clockReset();
 
+	ckCpu->clockResume();
 	// Image
 	auto aspect_ratio = 16.0 / 9.0;
 	int image_width = 400; // 400
-	int samples_per_pixel = 1;
-	const int max_depth = 5;
+	int samples_per_pixel = 10;
+	const int max_depth = 50;
 
-	ckCpu->clockResume();
 	// World
+	ckWolrdBVH->clockResume();
 	hittable_list world = random_scene();
-
-	ckCpu->clockPause();
-	ckCpu->clockPrint();
+	ckWolrdBVH->clockPause();
 
 	// Camera
 	point3 lookfrom(13, 2, 3);
@@ -167,16 +120,11 @@ int main()
 	camera cam(lookfrom, lookat, vup, 20, aspect_ratio, aperture, dist_to_focus, 0.0, 1.0);
 
 	// Rendered Image Array
-	array = (unsigned char *)malloc(sizeof(unsigned char) * image_width * image_height * 3);
-
-	ckCpu->clockReset();
-	ckCpu->clockResume();
+	image_array = (unsigned char *)malloc(sizeof(unsigned char) * image_width * image_height * 3);
 
 	// Render
+	ckRendering->clockResume();
 	float r, g, b;
-
-	// RT18
-	// PRINT PIXEL VALUES OF THE OUTPUT IMAGE: printf("------------------- IMAGE -------------------\n");
 
 	for (int j = 0; j < image_height; ++j)
 	{
@@ -191,13 +139,6 @@ int main()
 				auto v = ((image_height - j - 1) + random_float()) / (image_height - 1);
 
 				ray cur_ray = cam.get_ray(u, v);
-
-				// RT17: FOR DEBUGGING
-				/*
-				printf("(RENDER) Pixel (%lf, %lf): Ray Direction = (%lf, %lf, %lf)\n\n",
-				u, v,
-				(cur_ray.direction()).e[0], (cur_ray.direction()).e[1], (cur_ray.direction()).e[2]);
-				*/
 				
 				pixel_color += ray_color(cur_ray, world, max_depth);
 
@@ -210,26 +151,27 @@ int main()
 				r = sqrt(scale * r);
 				g = sqrt(scale * g);
 				b = sqrt(scale * b);
-
-				//				printf("[%dx%d s:%d] %lf %lf %lf\n", j, i, s, pixel_color[0], pixel_color[1], pixel_color[2]);
-				// printf("[%d] %f %f %f\n", s, pixel_color[0], pixel_color[1], pixel_color[2]);
 			}
 
-			array[idx] = (256 * clamp(r, 0.0, 0.999));
-			array[idx + 1] = (256 * clamp(g, 0.0, 0.999));
-			array[idx + 2] = (256 * clamp(b, 0.0, 0.999));
-
-			// RT18 - PRINT PIXEL VALUES OF THE OUTPUT IMAGE:
-			// printf("  R:%d, G:%d, B:%d\n", array[idx], array[idx+1], array[idx+2]);
+			image_array[idx] = (256 * clamp(r, 0.0, 0.999));
+			image_array[idx + 1] = (256 * clamp(g, 0.0, 0.999));
+			image_array[idx + 2] = (256 * clamp(b, 0.0, 0.999));
 		}
 	}
-	// RT18 - PRINT PIXEL VALUES OF THE OUTPUT IMAGE:
-	// printf("---------------------------------------------\n");
-
+	ckRendering->clockPause();
 	ckCpu->clockPause();
+
+	/* Print clocks */
 	ckCpu->clockPrint();
+	ckWolrdBVH->clockPrint();
+	ckRendering->clockPrint();
 
-	ppmSave("../images/img.ppm", array, image_width, image_height);
+	/* Save image */
+	time_t t = time(NULL);
+	tm *tPtr = localtime(&t);
+	int timeStamp = (((tPtr->tm_year) + 1900) % 100) * 10000 + ((tPtr->tm_mon) + 1) * 100 + (tPtr->tm_mday);
+	string img_path = "../images/FP32/" + to_string(timeStamp) + "_" + to_string(image_width) + "_" + to_string(samples_per_pixel) + "_" + to_string(max_depth) + "_img.ppm";
 
+	ppmSave(img_path.c_str(), image_array, image_width, image_height);
 	return 0;
 }
