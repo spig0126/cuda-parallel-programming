@@ -3,6 +3,7 @@
 #include <limits>
 #include <stdexcept>
 #include <vector>
+#include <assert.h>
 
 #include "bfpStruct.cuh"
 
@@ -18,6 +19,7 @@ __managed__ unsigned int INT_ALL_ONES = 0xffffffff;
 
 namespace bfp
 {
+
     /* type conversions */
     __device__ float bfpNum_to_float(bfpNum b)
     {
@@ -95,6 +97,7 @@ namespace bfp
     /* frequently used bfpNums */
     // __managed__ bfpNum b_1 = int_to_bfpNum(1);
     __managed__ bfpNum b_0 = {0, 0, 0};
+
     // __managed__ bfpNum b_2 = int_to_bfpNum(2);
     // __managed__ bfpNum b_1_neg = int_to_bfpNum(-1);
     // __managed__ bfpNum b_pi = float_to_bfpNum(3.1415926535897932385);
@@ -469,19 +472,19 @@ namespace bfp
 
     __device__ bfpNum sqrt(bfpNum a)
     {
-        return float_to_bfpNum(std::sqrt(bfpNum_to_float(a)));
+        return float_to_bfpNum(sqrtf(bfpNum_to_float(a)));
     }
 
-    __device__ bfpNum sqrt(float a) { return float_to_bfpNum(std::sqrt(a)); }
+    __device__ bfpNum sqrt(float a) {return float_to_bfpNum(sqrtf(a)); }
 
     __device__ bfpNum pow(bfpNum base, bfpNum n)
     {
-        return float_to_bfpNum(std::pow(bfpNum_to_float(base), bfpNum_to_float(n)));
+        return float_to_bfpNum(powf(bfpNum_to_float(base), bfpNum_to_float(n)));
     }
 
     __device__ bfpNum pow(bfpNum base, float n)
     {
-        return float_to_bfpNum(std::pow(bfpNum_to_float(base), n));
+        return float_to_bfpNum(powf(bfpNum_to_float(base), n));
     }
 
     __device__ bfpNum abs(bfpNum a)
@@ -492,52 +495,27 @@ namespace bfp
 
     __device__ bfpNum tan(bfpNum a)
     {
-        return float_to_bfpNum(std::tan(bfpNum_to_float(a)));
+        return float_to_bfpNum(tanf(bfpNum_to_float(a)));
     }
 
     __device__ bfpNum sin(bfpNum a)
     {
-        return float_to_bfpNum(std::sin(bfpNum_to_float(a)));
+        return float_to_bfpNum(sinf(bfpNum_to_float(a)));
     }
 
     __device__ bfpNum cos(bfpNum a)
     {
-        return float_to_bfpNum(std::cos(bfpNum_to_float(a)));
+        return float_to_bfpNum(cosf(bfpNum_to_float(a)));
     }
 
     __device__ bool compare(bfpNum a, bfpNum b)
     {
-        /* align exponents */
-        if (a.exp >= b.exp)
-        {
-            b.mant >>= (a.exp - b.exp);
-        }
-        else
-        {
-            a.mant >>= (b.exp - a.exp);
-        }
-
-        /* a > b */
-        if (a.sign ^ b.sign)
-        { // 둘 중 하나만 음수인 경우
-            if (a.sign)
-                return false; // a가 음수인 경우
-            else
-                return true; // b가 음수인 경우
-        }
-        else if (a.sign && b.sign)
-        { // 둘 다 음수인 경우
-            return a.mant < b.mant;
-        }
-        else
-        { // 둘 다 양수인 경우
-            return a.mant > b.mant;
-        }
+        return bfpNum_to_float(a) > bfpNum_to_float(b);
     }
 
     __device__ bool isequal(bfpNum a, bfpNum b)
     {
-        return (a.sign == b.sign) && (a.exp == b.exp) && (a.mant == b.mant);
+        return bfpNum_to_float(a) == bfpNum_to_float(b);
     }
 
     __device__ inline bfpNum operator+(bfpNum a, bfpNum b) { return add(a, b); }
@@ -556,76 +534,20 @@ namespace bfp
 
     __device__ inline bfpNum min(bfpNum a, bfpNum b)
     {
-        /* align exponents */
-        if (a.exp >= b.exp)
-        {
-            b.mant >>= (a.exp - b.exp);
-        }
-        else
-        {
-            a.mant >>= (b.exp - a.exp);
-        }
-
-        /* a > b */
-        if (a.sign ^ b.sign)
-        { // 둘 중 하나만 음수인 경우
-            if (a.sign)
-                return a; // a가 음수인 경우
-            else
-                return b; // b가 음수인 경우
-        }
-        else if (a.sign && b.sign)
-        { // 둘 다 음수인 경우
-            if (a.mant < b.mant)
-                return b;
-            else
-                return a;
-        }
-        else
-        { // 둘 다 양수인 경우
-            if (a.mant > b.mant)
-                return b;
-            else
-                return a;
-        }
+        float a_f = bfpNum_to_float(a);
+        float b_f = bfpNum_to_float(b);
+        float min = fminf(a_f, b_f);
+        return float_to_bfpNum(min);
     }
 
     __device__ inline bfpNum max(bfpNum a, bfpNum b)
     {
-        /* align exponents */
-        if (a.exp >= b.exp)
-        {
-            b.mant >>= (a.exp - b.exp);
-        }
-        else
-        {
-            a.mant >>= (b.exp - a.exp);
-        }
-
-        /* a > b */
-        if (a.sign ^ b.sign)
-        { // 둘 중 하나만 음수인 경우
-            if (a.sign)
-                return b; // a가 음수인 경우
-            else
-                return a; // b가 음수인 경우
-        }
-        else if (a.sign && b.sign)
-        { // 둘 다 음수인 경우
-            if (a.mant < b.mant)
-                return a;
-            else
-                return b;
-        }
-        else
-        { // 둘 다 양수인 경우
-            if (a.mant > b.mant)
-                return a;
-            else
-                return b;
-        }
+        float a_f = bfpNum_to_float(a);
+        float b_f = bfpNum_to_float(b);
+        float max = fmaxf(a_f, b_f);
+        return float_to_bfpNum(max);
     }
-
+    
     __device__ inline bool operator>(bfpNum a, bfpNum b) { return compare(a, b); }
 
     __device__ inline bool operator>=(bfpNum a, bfpNum b)

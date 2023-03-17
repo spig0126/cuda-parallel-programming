@@ -130,12 +130,12 @@ int main(int argc, char **argv)
     int a = std::stoi(argv[1]);
     ofstream cntFile, caseFile;
     // cntFile.open("addErrorCnt.txt", std::ios_base::app);
-    cntFile.open("multErrorCnt.txt", std::ios_base::app);
-    // cntFile.open("divErrorCnt.txt", std::ios_base::app);
+    // cntFile.open("multErrorCnt.txt", std::ios_base::app);
+    cntFile.open("divErrorCnt.txt", std::ios_base::app);
 
     // caseFile.open("addErrorCase.txt", std::ios_base::out);
-    caseFile.open("multErrorCase.txt", std::ios_base::out);
-    // caseFile.open("divErrorCase.txt", std::ios_base::out);
+    // caseFile.open("multErrorCase.txt", std::ios_base::out);
+    caseFile.open("divErrorCase.txt", std::ios_base::out);
     caseFile.precision(flt::max_digits10 + 2);
 
     // GPU memory
@@ -152,13 +152,13 @@ int main(int argc, char **argv)
 
     for (int b_front = 0; b_front <= 0x3fff; b_front++)
     {
-        gpu_two_num_mult<<<gridSize, blockSize>>>(d_n, a, b_front);
+        // gpu_two_num_mult<<<gridSize, blockSize>>>(d_n, a, b_front);
         // gpu_two_num_add<<<gridSize, blockSize>>>(d_n, a, b_front);
-        // gpu_two_num_div<<<gridSize, blockSize>>>(d_n, a, b_front);
+        gpu_two_num_div<<<gridSize, blockSize>>>(d_n, a, b_front);
         err = cudaMemcpy(h_n, d_n, N_BYTE_SIZE, cudaMemcpyDeviceToHost);
         checkCudaError(err);
 
-        cnt_error(h_n, a, b_front, cntFile, caseFile, " * ", true);
+        cnt_error(h_n, a, b_front, cntFile, caseFile, " / ", true);
 
     }
 

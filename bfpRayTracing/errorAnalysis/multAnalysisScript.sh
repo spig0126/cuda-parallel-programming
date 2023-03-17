@@ -1,5 +1,5 @@
-start=1001
-end=5000
+start=77192
+end=80000
 
 echo "START mult testing $start ~ $end!"
 

@@ -1,6 +1,5 @@
-# start=11220
-start=6001
-end=10000
+start=77199
+end=80000
 
 echo "START div testing $start ~ $end!";
 
